@@ -51,7 +51,7 @@ class StoreReader(reader_1cd.Reader1CD):
             self.versions = {row[0]: {
                 'verion': row[0],
                 'user': self.users[row[1]],
-                'comment': row[6] if self.format_83 else row[3],
+                'comment': row[6] if self.format_83 else row[4],
                 'date': row[2]
             } for row in gen}
 
@@ -113,7 +113,7 @@ class StoreReader(reader_1cd.Reader1CD):
                                 self.__write_file(cf_reader.files['module'], obj_path + 'Модуль.txt')
                                 files.append(obj_path + 'Модуль.txt')
                             else:
-                                self.__write_file(data, '%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
+                                self.__write_file(cf_reader.files[file_name], '%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
                                 files.append('%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
                 else:
                     self.__write_file(data, os.path.join(obj_path, name + '.txt'))
@@ -176,9 +176,11 @@ class StoreReader(reader_1cd.Reader1CD):
         self.__set_parrents(objects)
 
     def __get_objects_by_version(self, version_number):
-        objects = []
+        objects = {}
+        count = 0
         for row in self.read_table_by_name('history',
                                            push_headers=False):
+            count += 1
             obj = self.objects_info[row[0]]
             obj['name'] = row[6] if self.format_83 else row[5]
             if self.format_83:
@@ -186,7 +188,7 @@ class StoreReader(reader_1cd.Reader1CD):
 
             if row[1] != version_number:
                 continue
-            objects.append(obj)
+            objects[row[0]] = obj
             if self.format_83:
                 obj['name'] = row[6]
                 obj['parent'] = row[4]
@@ -203,35 +205,41 @@ class StoreReader(reader_1cd.Reader1CD):
                     'name': 'info'
                 }]
         if not self.format_83:
-            for obj in objects:
+            for obj in objects.values():
                 obj['files'][0]['data'] = self.read_blob('history', obj['files'][0]['data'])
 
         gen = self.read_table_by_name('externals',
                                       push_headers=False,
                                       read_blob=not self.format_83,
                                       filter_function=lambda x: x[1] == version_number)
-        if self.format_83:
-            for row in gen:
-                if row[6] is None:
-                    continue
-                self.objects_info[row[0]]['files'].append(
+
+        for row in gen:
+            data = row[6] if self.format_83 else row[5]
+            if data is None:
+                continue
+            if row[0] in objects:
+                files = objects[row[0]]['files']
+            else:
+                obj = objects[row[0]] = self.objects_info[row[0]]
+                files = obj['files'] = []
+
+            if self.format_83:
+                files.append(
                     {
                         'name': row[2],
-                        'hash': row[6],
+                        'hash': data,
                         'packed': row[4],
                     })
-        else:
-            for row in gen:
-                if row[5] is None:
-                    continue
-                self.objects_info[row[0]]['files'].append(
+            else:
+                files.append(
                     {
                         'name': row[2],
-                        'data': row[5],
+                        'data': data,
                         'packed': row[4],
                     })
 
-        return objects
+        logger.debug('version objects (%s) %s' % (len(objects), ', '.join([item['name'] for item in objects.values()])))
+        return [v for v in objects.values()]
 
     def __load_classes(self):
         if self.meta_classes:
