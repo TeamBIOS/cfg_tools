@@ -1,0 +1,99 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>" />
+    <metadata>
+        <class id="cf4abeab-37b2-11d4-940f-008048da11f9" type="common"      multiple="Конфигурации"                 single="Конфигурация"                 />
+        <class id="0195e80c-b157-11d4-9435-004095e12fc7" type="common"      multiple="Константы"                    single="Константа"                    />
+        <class id="cf4abea6-37b2-11d4-940f-008048da11f9" type="common"      multiple="Справочники"                  single="Справочник"                   />
+        <class id="0fe48980-252d-11d6-a3c7-0050bae0a776" type="common"      multiple="ОбщиеМодули"                  single="ОбщийМодуль"                  />
+        <class id="3e7bfcc0-067d-11d6-a3c7-0050bae0a776" type="common"      multiple="КритерииОтбора"               single="КритерииОтбора"               />
+        <class id="24c43748-c938-45d0-8d14-01424a72b11e" type="common"      multiple="ПараметрыСеанса"              single="ПараметрыСеанса"              />
+        <class id="07ee8426-87f1-11d5-b99c-0050bae0a95d" type="common"      multiple="ОбщиеФормы"                   single="ОбщиеФормы"                   />
+        <class id="7dcd43d9-aca5-4926-b549-1842e6a4e8cf" type="common"      multiple="ОбщиеКартинки"                single="ОбщиеКартинки"                />
+        <class id="1c57eabe-7349-44b3-b1de-ebfeab67b47d" type="common"      multiple="ГруппыКоманд"                 single="ГруппыКоманд"                 />
+        <class id="58848766-36ea-4076-8800-e91eb49590d7" type="common"      multiple="ЭлементыСтиля"                single="ЭлементыСтиля"                />
+        <class id="cc9df798-7c94-4616-97d2-7aa0b7bc515e" type="common"      multiple="ПакетыXDTO"                   single="ПакетыXDTO"                   />
+        <class id="8657032e-7740-4e1d-a3ba-5dd6e8afb78f" type="common"      multiple="WebСервисы"                   single="WebСервисы"                   />
+        <class id="0fffc09c-8f4c-47cc-b41c-8d5c5a221d79" type="common"      multiple="HttpСервисы"                  single="HttpСервисы"                  />
+        <class id="5274d9fc-9c3a-4a71-8f5e-a0db8ab23de5" type="common"      multiple="ВнешниеИсточникиДанных"       single="ВнешниеИсточникиДанных"       />
+        <class id="4612bd75-71b7-4a5c-8cc5-2b0b65f9fa0d" type="common"      multiple="ЖурналыДокументов"            single="ЖурналыДокументов"            />
+        <class id="238e7e88-3c5f-48b2-8a3b-81ebbecb20ed" type="common"      multiple="ПланыСчетов"                  single="ПланыСчетов"                  />
+        <class id="82a1b659-b220-4d94-a9bd-14d757b95a48" type="common"      multiple="ПланыВидовХарактеристик"      single="ПланыВидовХарактеристик"      />
+        <class id="30b100d6-b29f-47ac-aec7-cb8ca8a54767" type="common"      multiple="ПланыВидовРасчета"            single="ПланыВидовРасчета"            />
+        <class id="bc587f20-35d9-11d6-a3c7-0050bae0a776" type="common"      multiple="Последовательности"           single="Последовательности"           />
+        <class id="061d872a-5787-460e-95ac-ed74ea3a3e84" type="common"      multiple="Документы"                    single="Документы"                    />
+        <class id="fcd3404e-1523-48ce-9bc0-ecdb822684a1" type="common"      multiple="БизнесПроцессы"               single="БизнесПроцессы"               />
+        <class id="f2de87a8-64e5-45eb-a22d-b3aedab050e7" type="common"      multiple="РегистрыРасчета"              single="РегистрыРасчета"              />
+        <class id="631b75a0-29e2-11d6-a3c7-0050bae0a776" type="common"      multiple="Отчеты"                       single="Отчеты"                       />
+        <class id="36a8e346-9aaa-4af9-bdbd-83be3c177977" type="common"      multiple="НумераторыДокументов"         single="НумераторыДокументов"         />
+        <class id="bf845118-327b-4682-b5c6-285d2a0eb296" type="common"      multiple="Обработки"                    single="Обработки"                    />
+        <class id="2deed9b8-0056-4ffe-a473-c20a6c32a0bc" type="common"      multiple="РегистрыБухгалтерии"          single="РегистрыБухгалтерии"          />
+        <class id="3e63355c-1378-4953-be9b-1deb5fb6bec5" type="common"      multiple="Задачи"                       single="Задачи"                       />
+        <class id="13134201-f60b-11d5-a3c7-0050bae0a776" type="common"      multiple="РегистрыСведений"             single="РегистрыСведений"             />
+        <class id="f6a80749-5ad7-400b-8519-39dc5dff2542" type="common"      multiple="Перечисления"                 single="Перечисления"                 />
+        <class id="b64d9a40-1642-11d6-a3c7-0050bae0a776" type="common"      multiple="РегистрыНакопления"           single="РегистрыНакопления"           />
+        <class id="30d554db-541e-4f62-8970-a1c6dcfeb2bc" type="common"      multiple="ПараметрыФункциональныхОпций" single="ПараметрыФункциональныхОпций" />
+        <class id="857c4a91-e5f4-4fac-86ec-787626f1c108" type="common"      multiple="ПланыОбмена"                  single="ПланыОбмена"                  />
+        <class id="11bdaf85-d5ad-4d91-bb24-aa0eee139052" type="common"      multiple="РегламентныеЗадания"          single="РегламентныеЗадания"          />
+        <class id="15794563-ccec-41f6-a83c-ec5f7b9a5bc1" type="common"      multiple="ОбщиеРеквизиты"               single="ОбщиеРеквизиты"               />
+        <class id="2f1a5187-fb0e-4b05-9489-dc5dd6412348" type="common"      multiple="ОбщиеКоманды"                 single="ОбщиеКоманды"                 />
+        <class id="37f2fa9a-b276-11d4-9435-004095e12fc7" type="common"      multiple="Подсистемы"                   single="Подсистемы"                   />
+        <class id="af547940-3268-434f-a3e7-e47d6d2638c3" type="common"      multiple="ФункциональныеОпции"          single="ФункциональныеОпции"          />
+        <class id="09736b02-9cac-4e3f-b4f7-d3e9576ab948" type="role"        multiple="Роли"                         single="Роли"                         />
+        <class id="46b4cd97-fd13-4eaa-aba2-3bddd7699218" type="common"      multiple="ХранилищаНастроек"            single="ХранилищаНастроек"            />
+        <class id="0c89c792-16c3-11d5-b96b-0050bae0a95d" type="maket"       multiple="ОбщиеМакеты"                  single="ОбщиеМакеты"                  />
+        <class id="4e828da6-0f44-4b5b-b1c0-a2b3cfe7bdcc" type="common"      multiple="ПодпискиНаСобытие"            single="ПодпискиНаСобытие"            />
+        <class id="c045099e-13b9-4fb6-9d50-fca00202971e" type="common"      multiple="ОпределяемыеТипы"             single="ОпределяемыеТипы"             />
+        <class id="3e5404af-6ef8-4c73-ad11-91bd2dfac4c8" type="common"      multiple="Стили"                        single="Стили"                        />
+        <class id="39bddf6a-0c3c-452b-921c-d99cfa1c2f1b" type="interface"   multiple="Интерфейсы"                   single="Интерфейсы"                   />
+        <class id="9cd510ce-abfc-11d4-9434-004095e12fc7" type="common"      multiple="Языки"                        single="Языки"                        />
+        <class id="274bf899-db0e-4df6-8ab5-67bf6371ec0b" type="common"      multiple="Перерасчеты"                  single="Перерасчеты"                  />
+        <class id="d26096fb-7a5d-4df9-af63-47d04771fa9b" type="common"      multiple="WSссылки"                     single="WSссылки"                      description="WS-ссылки для 8.1"/>
+
+   </metadata>
+
+    <type name="common">
+        <file id=".0" name="МодульОбъекта"/>
+        <file id=".3" name="МодульМенеджера"/>
+        <file id=".1" name="Справка"/>
+        <file id=".1c" name="Предопределенные"/>
+    </type>
+    <type name="form">
+        <file id=".0" name="__form__"/>
+        <file id=".2" name="МодульФормы"/>
+        <file id=".1" name="Справка"/>
+    </type>
+    <type name="maket">
+        <file id=".0" name="Макет"/>
+    </type>
+    <type name="role">
+        <file id=".0" name="Роль"/>
+    </type>
+    <type name="interface">
+        <file id=".0" name="Интерфейс"/>
+    </type>
+    <class id="3daea016-69b7-4ed4-9453-127911372fe6" multiple="Макеты"                       single="Макет"                          type="maket"/>
+    <class id="11372fe6-1279-9453-16a0-ae3db769d44e" multiple="_________________ОбщиеМакеты" single="__________________ОбщийМакет"   type="maket"/>
+    <class id="e3403acd-1c95-421b-87e4-4dfa29d38b52" multiple="Таблицы"                      single="Таблица"                        description="Таблица внешнего источника данных"/>
+    <class id="2bb208ca-e441-4023-9ab9-32a7807a85d0" multiple="Кубы"                         single="Куб"                            description="Куб внешнего источника данных"/>
+    <forms>
+        <class id="b64d9a44-1642-11d6-a3c7-0050bae0a776" type="form" multiple="Формы"  single="Форма" description="Формы РегистрНакопления"/>
+        <class id="3f7a8120-b71a-4265-98bf-4d9bc09b7719" type="form" multiple="Формы"  single="Форма" description="Формы БизнесПроцесс"/>
+        <class id="13134204-f60b-11d5-a3c7-0050bae0a776" type="form" multiple="Формы"  single="Форма" description="Формы РегистрСведений"/>
+        <class id="d5b0e5ed-256d-401c-9c36-f630cafd8a62" type="form" multiple="Формы"  single="Форма" description="Формы Обработка"/>
+        <class id="5372e285-03db-4f8c-8565-fe56f1aea40e" type="form" multiple="Формы"  single="Форма" description="Формы ПланСчетов"/>
+        <class id="a7f8f92a-7a4b-484b-937e-42d242e64144" type="form" multiple="Формы"  single="Форма" description="Формы ВидаРасчета"/>
+        <class id="eb2b78a8-40a6-4b7e-b1b3-6ca9966cbc94" type="form" multiple="Формы"  single="Форма" description="Формы плана видов характеристик"/>
+        <class id="3f58cbfb-4172-4e54-be49-561a579bb38b" type="form" multiple="Формы"  single="Форма" description="Формы Задача"/>
+        <class id="d3b5d6eb-4ea2-4610-a3e2-624d4e815934" type="form" multiple="Формы"  single="Форма" description="Формы Регистр бухгалтерии" />
+        <class id="a2cb086c-db98-43e4-a1a9-0760ab048f8d" type="form" multiple="Формы"  single="Форма" description="Формы РегистрРасчета"/>
+        <class id="a3b368c0-29e2-11d6-a3c7-0050bae0a776" type="form" multiple="Формы"  single="Форма" description="Формы Отчет"/>
+        <class id="ec81ad10-ca07-11d5-b9a5-0050bae0a95d" type="form" multiple="Формы"  single="Форма" description="Формы ЖурналДокументов"/>
+        <class id="fb880e93-47d7-4127-9357-a20e69c17545" type="form" multiple="Формы"  single="Форма" description="Формы Документ"/>
+        <class id="fdf816d2-1ead-11d5-b975-0050bae0a95d" type="form" multiple="Формы"  single="Форма" description="Формы Справочник"/>
+        <class id="966cbc94-6ca9-b1b3-a878-2beba6407e4b" type="form" multiple="Формы"  single="Форма" description="Формы ПланВидовХарактеристик"/>
+        <class id="87c509ab-3d38-4d67-b379-aca796298578" type="form" multiple="Формы"  single="Форма" description="Формы ПланОбмена"/>
+        <class id="33f2e54b-37ce-4a7a-a569-b648d7aa4634" type="form" multiple="Формы"  single="Форма" description="Формы Перечисление"/>
+        <class id="00867c40-06b1-11d6-a3c7-0050bae0a776" type="form" multiple="Формы"  single="Форма" description="Формы КритерийОтбора"/>
+        <class id="b8533c0c-2342-4db3-91a2-c2b08cbf6b23" type="form" multiple="Формы"  single="Форма" description="Формы ХранилищеНастроек"/>
+    </forms>
+</root>
