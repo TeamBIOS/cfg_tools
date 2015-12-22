@@ -149,9 +149,10 @@ class BlockReader:
 
                 while 1:
                     if buff_lost < part_size:
-                        addr = next(sub_bl_iter)
-                        if not addr:
-                            return
+                        try:
+                            addr = next(sub_bl_iter)
+                        except StopIteration:
+                            break
                         self.db_file.seek(PAGE_SIZE * addr)
                         readed = min(lost, PAGE_SIZE)
                         lost -= readed
