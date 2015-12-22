@@ -18,13 +18,19 @@ class Mng:
 
     def __commit(self, version_info):
         self.repo.add()
-        self.repo.commit(version=version,
-                         msg=version_info['comment'],
+        self.repo.commit(version=version_info['verion'],
+                         msg=version_info['comment'] if version_info['comment'] is not None else '<no comment>',
                          author=version_info['user'].present,
                          email=version_info['user'].email,
                          date=version_info['date'])
+
     def init_repo(self):
         self.repo.init()
+        self.repo.pull()
+
+    def read_versions(self):
+        self.__init_reader()
+
     def export_version(self, version, commit=False):
         self.__init_reader()
         version_info = self.reader.versions[version]
