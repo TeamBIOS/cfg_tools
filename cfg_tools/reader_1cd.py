@@ -246,7 +246,7 @@ class Reader1CD:
                     for i in blob_fields:
                         val = values[i]
                         val = self.__read_blob(table_desc, val)
-                        if val and field.type == 'NT':
+                        if val and table_desc.fields[i].type == 'NT':
                             val = val.decode('utf-16')
                         values[i] = val
                 yield values
