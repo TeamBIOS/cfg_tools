@@ -9,24 +9,37 @@ logger = None
 
 class GitMng:
 
-    def __init__(self, path, remoute_url):
+    def __init__(self, path, remote_url):
         self.path = path
-        self.remote_url = remoute_url
+        self.remote_url = remote_url
 
-    def __execute_cmd(self, cmd_command, verbose=True):
+    def __execute_cmd(self, cmd_command):
         os.chdir(self.path)
+        logger.debug('Executing "%s"' % cmd_command)
         pr = subprocess.Popen(cmd_command,
                               shell=True,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE)
-        msg = pr.stdout.read()
-        err = pr.stderr.read()
-        txt = msg if msg else err
-        if err:
-            logger.error("Executing '%s'\n%s" % (cmd_command, err.decode()))
+        while pr.returncode is None:
+            stdpip = None
+            try:
+                stdpip = pr.communicate(None, 1)
+            except subprocess.TimeoutExpired:
+                pass
+            if stdpip is not None:
+                logger.debug('stdout: %s' % stdpip[0].decode())
+            # else:
+            #     logger.debug('stdout: %s' % pr.stdout.readline().decode())
+        logger.debug('exit code: %s' % pr.returncode)
+        if pr.returncode:
+            logger.error(stdpip[1].decode())
         else:
-            logger.debug("Executing '%s'\n%s" % (cmd_command, msg.decode()))
-        return msg, err
+            logger.debug(stdpip[0].decode())
+        # if err:
+        #     logger.error('Executed "%s"\n%s\n%s' % (cmd_command, msg.decode(), err.decode()))
+        # else:
+        #     logger.debug('%s' % msg.decode())
+        # return msg, err
 
     def init(self):
         self.__execute_cmd('git init')
@@ -46,10 +59,10 @@ class GitMng:
         os.unlink(comment_file.name)
 
     def push(self):
-        self.__execute_cmd('git push -u --all -v %s' % self.remoute_url)
+        self.__execute_cmd('git push -u --all -v %s' % self.remote_url)
         pass
 
     def pull(self):
-        self.__execute_cmd('git pull -v %s' % self.remoute_url)
+        self.__execute_cmd('git pull -v %s' % self.remote_url)
 
 logger = logging.getLogger('GIT')
