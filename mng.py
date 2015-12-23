@@ -8,6 +8,14 @@ import os
 
 class Mng:
 
+    @staticmethod
+    def init_log(log_level, file_name=None):
+        logging.basicConfig(level=log_level,
+                            format='%(asctime)-15s %(levelname)7s: %(name)5s: %(message)s',
+                            handlers=[logging.StreamHandler()
+                                      if file_name is None else
+                                      logging.FileHandler(file_name, encoding='utf-8')])
+
     def __init__(self, config_file=None, path=None, store_path=None, remote_url=None):
         if config_file:
             self.__load_config(config_file)
@@ -22,13 +30,16 @@ class Mng:
         if self.reader is None:
             self.reader = store_reader.StoreReader(self.store_path)
             self.reader.read()
-            self.reader.read_versions()
+
+    def __before_export(self):
+        self.load_authors()
+        self.read_versions()
 
     def __commit(self, version_info):
         self.repo.add()
         self.repo.commit(version=version_info['verion'],
                          msg=version_info['comment'] if version_info['comment'] is not None else '<no comment>',
-                         author=version_info['user'].present,
+                         author=version_info['user'].git_name,
                          email=version_info['user'].email,
                          date=version_info['date'])
 
@@ -51,12 +62,20 @@ class Mng:
                 if 'remote_repo' in section:
                     self.remote_repo_url = section['remote_repo']
 
+    def __save_exported_version_info(self, version):
+        with open(self.__last_version_file(), 'w') as f:
+            f.write(str(version))
+            f.close()
 
-    @staticmethod
-    def init_log(log_level, file_name=None):
-        logging.basicConfig(level=log_level,
-                            format='%(asctime)-15s %(levelname)7s: %(name)5s: %(message)s',
-                            filename=file_name)
+    def __last_version_file(self):
+        return os.path.join(self.local_repo, 'last_version.txt')
+
+    def __export_version(self, version, commit=True):
+        version_info = self.reader.versions[version]
+        self.reader.export_version(version, self.local_repo, True)
+        self.__save_exported_version_info(version)
+        if commit:
+            self.__commit(version_info)
 
     def init_repo(self, check_exist=True):
         if check_exist and os.path.exists(os.path.join(self.local_repo, '.git')):
@@ -65,27 +84,69 @@ class Mng:
         self.repo.pull()
         with open(os.path.join(self.local_repo, '.gitignore'), 'w+') as f:
             f.write('# Service files')
-            f.write('authors.txt')
-            f.write('last_version.txt')
+            f.write('authors.csv')
             f.close()
+        self.load_authors()
+
+    def load_authors(self):
+        self.__init_reader()
+        authors = {}
+        file_name = os.path.join(self.local_repo, 'authors.csv')
+        if os.path.exists(file_name):
+            with open(file_name, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    words = line.split(';')
+                    if len(words) == 3:
+                        authors[words[0]] = (words[1], words[2])
+            f.close()
+        self.__init_reader()
+        self.reader.read_users()
+        new_users = False
+        for user in self.reader.users.values():
+            if user.name in authors:
+                user.git_name = authors[user.name][0].strip()
+                user.email = authors[user.name][1].strip()
+            else:
+                new_users = True
+
+        if new_users:
+            with open(file_name, 'w', encoding='utf-8') as f:
+                for user in self.reader.users.values():
+                    f.write('%s; %s; %s\n' % (user.name, user.git_name, user.email))
+                f.close()
 
     def read_versions(self):
         self.__init_reader()
+        self.reader.read_versions()
         return self.reader.versions
 
-    def export_version(self, version, commit=False):
-        self.__init_reader()
-        version_info = self.reader.versions[version]
-        self.reader.export_version(version, self.local_repo, True)
-        if commit:
-            self.__commit(version_info)
+    def export_version(self, version, commit=True):
+        self.__before_export()
+        self.__export_version(version, commit)
 
-    def export_versions(self, start_version, last_version=9999999, commit=True):
-        self.__init_reader()
+    def export_versions(self, start_version, last_version=9999999, commit=True, push_step=0):
+        self.__before_export()
+        count = 0
         for v in sorted(self.reader.versions):
             if start_version <= v <= last_version:
-                version_info = self.reader.versions[v]
-                self.reader.export_version(v, self.local_repo, True)
-                if commit:
-                    self.__commit(version_info)
+                self.__export_version(v, commit)
 
+    def export_new(self, push_step=0):
+        self.repo.pull()
+        start_version = 0
+        if os.path.exists(self.__last_version_file()):
+            with open(self.__last_version_file(), 'r') as f:
+                try:
+                    start_version = int(f.readline())
+                except:
+                    logger.critical('Не удалось определить версию предидущей выгрузки')
+                    return False
+        start_version += 1
+        self.__before_export()
+        self.export_versions(start_version, push_step=push_step)
+        self.repo.push()
+        return True
+
+
+logger = logging.getLogger('MNG')
