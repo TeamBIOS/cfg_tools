@@ -26,11 +26,11 @@ class GitMng:
                 stdpip = pr.communicate(None, 1)
             except subprocess.TimeoutExpired:
                 pass
-            if stdpip is not None:
-                logger.debug('stdout: %s' % stdpip[0].decode())
+            # if stdpip is not None:
+            #     logger.debug('stdout: %s' % stdpip[0].decode())
             # else:
             #     logger.debug('stdout: %s' % pr.stdout.readline().decode())
-        logger.debug('exit code: %s' % pr.returncode)
+        logger.debug('Exit code: %s' % pr.returncode)
         if pr.returncode:
             logger.error(stdpip[1].decode())
         else:
@@ -40,6 +40,7 @@ class GitMng:
         # else:
         #     logger.debug('%s' % msg.decode())
         # return msg, err
+        return pr.returncode != 0
 
     def init(self):
         self.__execute_cmd('git init')
@@ -50,7 +51,9 @@ class GitMng:
     def commit(self, version, msg, author, email, date):
         os.environ['GIT_AUTHOR_DATE'] = date.strftime('"%Y-%m-%d %H:%M:%S"')
         os.environ['GIT_COMMITTER_DATE'] = date.strftime('"%Y-%m-%d %H:%M:%S"')
-        comment_file = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        comment_file = tempfile.NamedTemporaryFile(mode='w',
+                                                   delete=False,
+                                                   encoding='utf-8')
         msg = 'Version %s. %s' % (version, msg)
         comment_file.write(msg)
         comment_file.close()
@@ -64,5 +67,9 @@ class GitMng:
 
     def pull(self):
         self.__execute_cmd('git pull -v %s' % self.remote_url)
+
+    def gc(self):
+        self.__execute_cmd('git gc --auto')
+
 
 logger = logging.getLogger('GIT')
