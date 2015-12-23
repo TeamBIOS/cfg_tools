@@ -17,6 +17,10 @@ class Mng:
                                       logging.FileHandler(file_name, encoding='utf-8')])
 
     def __init__(self, config_file=None, path=None, store_path=None, remote_url=None):
+        self.local_repo = None
+        self.store_path = None
+        self.remote_repo_url = None
+
         if config_file:
             self.__load_config(config_file)
         else:
@@ -71,7 +75,7 @@ class Mng:
         return os.path.join(self.local_repo, 'last_version.txt')
 
     def __export_version(self, version, commit=True):
-        logger.info('==================================\n   Export version: %s' % version)
+        logger.info('================================== Export version: %s' % version)
         version_info = self.reader.versions[version]
         self.reader.export_version(version, self.local_repo, True)
         self.__save_exported_version_info(version)
