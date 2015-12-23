@@ -22,6 +22,12 @@ class User(common.ref):
 
 class StoreReader(reader_1cd.Reader1CD):
 
+    @staticmethod
+    def __write_file(data, file_name):
+        with open(file_name, 'wb+') as f:
+            f.write(data)
+            f.close()
+
     def __init__(self, file):
         super(StoreReader, self).__init__(file)
         self.users = None
@@ -31,104 +37,6 @@ class StoreReader(reader_1cd.Reader1CD):
         self.root_uid = None
 
         self.objects_info = None
-
-    def read(self):
-        super(StoreReader, self).read()
-        for f in self.get_table_info('history').fields:
-            if f.name == 'OBJDATA':
-                self.format_83 = False
-                break
-
-    def read_users(self):
-        if not self.users:
-            gen = self.read_table_by_name('USERS',
-                                          read_blob=True,
-                                          push_headers=False)
-            self.users = {row[0]: User(row[0], row[1]) for row in gen}
-
-    def read_versions(self):
-        self.read_users()
-        if not self.versions:
-            gen = self.read_table_by_name('VERSIONS',
-                                          read_blob=True,
-                                          push_headers=False)
-            self.versions = {row[0]: {
-                'verion': row[0],
-                'user': self.users[row[1]],
-                'comment': row[6] if self.format_83 else row[4],
-                'date': row[2]
-            } for row in gen}
-
-    def export_version(self, version_number, path, hierarchy=False):
-        objects_path = os.path.join(os.path.dirname(self.file_name), 'data', 'objects')
-        self.__load_classes()
-        self.__read_objects()
-
-        objects = self.__get_objects_by_version(version_number)
-        files = []
-        for obj in objects:
-            meta_class = obj['class']
-            full_name = ''
-            parent = obj
-            while 1:
-                if hierarchy:
-                    full_name = str(parent['class'].multiple) + os.path.sep + parent['name'] + os.path.sep + full_name
-                else:
-                    full_name = str(parent['class'].name) + '.' + parent['name'] + '.' + full_name
-                parent = parent['parent']
-                if parent is None:
-                    break
-            logger.debug('Export %s' % full_name)
-            obj_path = os.path.join(path, full_name)
-            if hierarchy and not os.path.exists(obj_path):
-                os.makedirs(obj_path)
-            for file in obj['files']:
-                name = file['name']
-                if '.' in name and name[name.rindex('.'):] in meta_class.files:
-                    name = meta_class.files[name[name.rindex('.'):]]
-
-                if self.format_83:
-                    source = os.path.join(objects_path, file['hash'][:2], file['hash'][2:])
-                    with open(source, 'rb') as f:
-                        data = f.read()
-                        f.close()
-                else:
-                    data = file['data']
-                if data is None:
-                    continue
-                if file['packed']:
-                    data = utils.inflate_inmemory(data)
-
-                if data[:4] == reader_cf.bytes7fffffff:
-                    cf_reader = reader_cf.ReaderCF(io.BytesIO(data))
-                    cf_reader.read()
-                    if name == "__form__":
-                        self.__write_file(cf_reader.files['form'], obj_path + 'Форма.txt')
-                        self.__write_file(cf_reader.files['module'], obj_path + 'Модуль.txt')
-                    else:
-                        for file_name in cf_reader.files:
-                            if file_name == 'info':
-                                continue
-                            elif file_name == 'form' and obj['class'] and obj['class'].type == 'form':
-                                self.__write_file(cf_reader.files['form'], obj_path + 'Форма.txt')
-                                files.append(obj_path + 'Форма.txt')
-                            elif file_name == 'module' and obj['class'] and obj['class'].type == 'form':
-                                self.__write_file(cf_reader.files['module'], obj_path + 'Модуль.txt')
-                                files.append(obj_path + 'Модуль.txt')
-                            else:
-                                self.__write_file(cf_reader.files[file_name], '%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
-                                files.append('%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
-                else:
-                    self.__write_file(data, os.path.join(obj_path, name + '.txt'))
-                    files.append(os.path.join(obj_path, name + '.txt'))
-        logger.debug('Saved %s files' % len(files))
-        return files
-
-    @staticmethod
-    def __write_file(data, file_name):
-        with open(file_name, 'wb+') as f:
-            f.write(data)
-            f.close()
 
     def __read_objects(self):
         if self.objects_info is not None:
@@ -155,7 +63,7 @@ class StoreReader(reader_1cd.Reader1CD):
                 else:
                     obj['parent'] = None
 
-    def __set_parrents(self, objects):
+    def __set_parents(self, objects):
         if len(objects):
             return
         parents = {}
@@ -177,7 +85,7 @@ class StoreReader(reader_1cd.Reader1CD):
             for o in parents[row[0]]:
                 o['parent'] = parent_obj
             objects.extend(parents[row[0]])
-        self.__set_parrents(objects)
+        self.__set_parents(objects)
 
     def __get_objects_by_version(self, version_number):
         objects = {}
@@ -267,5 +175,96 @@ class StoreReader(reader_1cd.Reader1CD):
             else:
                 meta_class.files = []
             self.meta_classes[utils.guid_to_bytes(cls.attrib['id'])] = meta_class
+
+    def read(self):
+        super(StoreReader, self).read()
+        for f in self.get_table_info('history').fields:
+            if f.name == 'OBJDATA':
+                self.format_83 = False
+                break
+
+    def read_users(self):
+        if not self.users:
+            gen = self.read_table_by_name('USERS',
+                                          read_blob=True,
+                                          push_headers=False)
+            self.users = {row[0]: User(row[0], row[1]) for row in gen}
+
+    def read_versions(self):
+        self.read_users()
+        if not self.versions:
+            gen = self.read_table_by_name('VERSIONS',
+                                          read_blob=True,
+                                          push_headers=False)
+            self.versions = {row[0]: {
+                'verion': row[0],
+                'user': self.users[row[1]],
+                'comment': row[6] if self.format_83 else row[4],
+                'date': row[2]
+            } for row in gen}
+
+    def export_version(self, version_number, path, hierarchy=False):
+        objects_path = os.path.join(os.path.dirname(self.file_name), 'data', 'objects')
+        self.__load_classes()
+        self.__read_objects()
+
+        objects = self.__get_objects_by_version(version_number)
+        files = []
+        for obj in objects:
+            meta_class = obj['class']
+            full_name = ''
+            parent = obj
+            while 1:
+                if hierarchy:
+                    full_name = str(parent['class'].multiple) + os.path.sep + parent['name'] + os.path.sep + full_name
+                else:
+                    full_name = str(parent['class'].name) + '.' + parent['name'] + '.' + full_name
+                parent = parent['parent']
+                if parent is None:
+                    break
+            logger.debug('Export %s' % full_name)
+            obj_path = os.path.join(path, full_name)
+            if hierarchy and not os.path.exists(obj_path):
+                os.makedirs(obj_path)
+            for file in obj['files']:
+                name = file['name']
+                if '.' in name and name[name.rindex('.'):] in meta_class.files:
+                    name = meta_class.files[name[name.rindex('.'):]]
+
+                if self.format_83:
+                    source = os.path.join(objects_path, file['hash'][:2], file['hash'][2:])
+                    with open(source, 'rb') as f:
+                        data = f.read()
+                        f.close()
+                else:
+                    data = file['data']
+                if data is None:
+                    continue
+                if file['packed']:
+                    data = utils.inflate_inmemory(data)
+
+                if data[:4] == reader_cf.bytes7fffffff:
+                    cf_files = reader_cf.ReaderCF.read_container(io.BytesIO(data))
+                    if name == "__form__":
+                        self.__write_file(cf_files['form'], obj_path + 'Форма.txt')
+                        self.__write_file(cf_files['module'], obj_path + 'Модуль.txt')
+                    else:
+                        for file_name in cf_files:
+                            if file_name == 'info':
+                                continue
+                            elif file_name == 'form' and obj['class'] and obj['class'].type == 'form':
+                                self.__write_file(cf_files['form'], obj_path + 'Форма.txt')
+                                files.append(obj_path + 'Форма.txt')
+                            elif file_name == 'module' and obj['class'] and obj['class'].type == 'form':
+                                self.__write_file(cf_files['module'], obj_path + 'Модуль.txt')
+                                files.append(obj_path + 'Модуль.txt')
+                            else:
+                                self.__write_file(cf_files[file_name], '%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
+                                files.append('%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
+                else:
+                    self.__write_file(data, os.path.join(obj_path, name + '.txt'))
+                    files.append(os.path.join(obj_path, name + '.txt'))
+        logger.debug('Saved %s files' % len(files))
+        return files
 
 logger = logging.getLogger('Store')
