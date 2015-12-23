@@ -26,7 +26,7 @@ class ReaderCF:
         }
 
     def read(self):
-        logger.debug('Read cf-container')
+        # logger.debug('Read cf-container')
         self.stream.seek(16)
         item_header = self.read_item_header()
         addresses = []
@@ -45,6 +45,6 @@ class ReaderCF:
             item_header = self.read_item_header()
             data = self.stream.read(item_header['data_len'])
             self.files[name] = data
-        logger.debug('files: %s' % list(self.files.keys()))
+        # logger.debug('files: %s' % list(self.files.keys()))
 
 logger = logging.getLogger('1CD')

@@ -71,6 +71,7 @@ class Mng:
         return os.path.join(self.local_repo, 'last_version.txt')
 
     def __export_version(self, version, commit=True):
+        logger.info('==================================\n   Export version: %s' % version)
         version_info = self.reader.versions[version]
         self.reader.export_version(version, self.local_repo, True)
         self.__save_exported_version_info(version)
@@ -131,6 +132,10 @@ class Mng:
         for v in sorted(self.reader.versions):
             if start_version <= v <= last_version:
                 self.__export_version(v, commit)
+                count += 1
+                if push_step and count == push_step:
+                    count = 0
+                    self.repo.push()
 
     def export_new(self, push_step=0):
         self.repo.pull()

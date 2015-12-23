@@ -63,7 +63,6 @@ class StoreReader(reader_1cd.Reader1CD):
         objects_path = os.path.join(os.path.dirname(self.file_name), 'data', 'objects')
         self.__load_classes()
         self.__read_objects()
-        logger.info('Export version: %s' % version_number)
 
         objects = self.__get_objects_by_version(version_number)
         files = []
@@ -122,6 +121,7 @@ class StoreReader(reader_1cd.Reader1CD):
                 else:
                     self.__write_file(data, os.path.join(obj_path, name + '.txt'))
                     files.append(os.path.join(obj_path, name + '.txt'))
+        logger.debug('Saved %s files' % len(files))
         return files
 
     @staticmethod
