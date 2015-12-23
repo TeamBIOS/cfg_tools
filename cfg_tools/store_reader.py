@@ -14,9 +14,10 @@ logger = None
 
 class User(common.ref):
 
-    def __init__(self, data, present, email=None):
-        super(User, self).__init__(data, present)
-        self.email = email if email is not None else present + '@localhost'
+    def __init__(self, data, name, email=None):
+        super(User, self).__init__(data, name)
+        self.email = email if email is not None else self.name + '@localhost'
+        self.git_name = self.name
 
 
 class StoreReader(reader_1cd.Reader1CD):
@@ -38,12 +39,15 @@ class StoreReader(reader_1cd.Reader1CD):
                 self.format_83 = False
                 break
 
-    def read_versions(self):
+    def read_users(self):
         if not self.users:
             gen = self.read_table_by_name('USERS',
                                           read_blob=True,
                                           push_headers=False)
             self.users = {row[0]: User(row[0], row[1]) for row in gen}
+
+    def read_versions(self):
+        self.read_users()
         if not self.versions:
             gen = self.read_table_by_name('VERSIONS',
                                           read_blob=True,

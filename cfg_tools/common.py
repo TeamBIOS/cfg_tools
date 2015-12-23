@@ -58,12 +58,12 @@ guid.EMPTY = guid(b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00
 
 class ref(guid):
 
-    def __init__(self, data, present):
+    def __init__(self, data, name):
         super(ref, self).__init__(data)
-        self.present = present
+        self.name = name
 
     def __str__(self):
-        return self.present
+        return self.name
 
 
 class BlockReader:
