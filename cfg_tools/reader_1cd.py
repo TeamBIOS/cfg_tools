@@ -100,9 +100,13 @@ class TableDesc:
         self.rows_count = 0
         self.blob_data = None
         self.content_data = None
+        self.fields_indexes = None
+        self.blob_fields = None
 
     def init_table(self):
         self.row_size = 1
+        self.blob_fields = []
+
         version_pos = -1
         for field in self.fields:
             if field.type == 'B' and field.length == 16:
@@ -113,7 +117,13 @@ class TableDesc:
         if version_pos > 1:
             self.fields.insert(0, self.fields.pop(version_pos))
 
+        ind = 0
+        self.fields_indexes = {}
         for field in self.fields:
+            self.fields_indexes[field.name.lower()] = ind
+            if field.type == 'NT' or field.type == 'I':
+                self.blob_fields.append(ind)
+            ind += 1
             field.byte_size = types_sz[field.type](field.length)
             if field.nullable:
                 field.byte_size += 1
@@ -130,6 +140,22 @@ class TableDesc:
         print('      row_size:', self.row_size)
         print('    table_size:', self.table_size)
         print('    rows_count:', self.rows_count)
+
+    def index_by_field_name(self, field_name):
+        return self.fields_indexes[field_name.lower()]
+
+    def init_row(self):
+        return Row(self)
+
+
+class Row(list):
+
+    def __init__(self, table):
+        self.table = table
+        self.extend([None] * len(table.fields))
+
+    def by_name(self, name):
+        return self[self.table.index_by_field_name(name)]
 
 
 class Reader1CD:
@@ -220,12 +246,9 @@ class Reader1CD:
             yield table_desc.fields
 
         offset = 0
-        blob_fields = []
-        for i in range(len(table_desc.fields)):
-            if table_desc.fields[i].type == 'NT' or table_desc.fields[i].type == 'I':
-                blob_fields.append(i)
+        blob_fields = table_desc.blob_fields
         for row_data in gen:
-            values = [None] * len(table_desc.fields)
+            values = table_desc.init_row()
             if row_data[0] == 1:
                 continue
             i = 0
