@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 import cfg_tools.utils as utils
-from cfg_tools.common import BlockReader, guid, PAGE_SIZE
+from cfg_tools.common import FileBlockReader, BlockReader, guid
 
 
 logger = None
@@ -103,6 +103,8 @@ class TableDesc:
         self.fields_indexes = None
         self.blob_fields = None
 
+        self.blob_reader = BlobReader(self.blob_addr) if self.blob_addr else None
+
     def init_table(self):
         self.row_size = 1
         self.blob_fields = []
@@ -158,6 +160,50 @@ class Row(list):
         return self[self.table.index_by_field_name(name)]
 
 
+class BlobReader(BlockReader):
+
+    CHUNK_SIZE = 256
+    reader = None
+
+    def __init__(self, info_address):
+        self.cache = {}
+        self.ratio = self.reader.CHUNK_SIZE // self.CHUNK_SIZE
+        self.blob_table_addr = info_address
+        self.address = self.reader.get_data_address(self.blob_table_addr)[1]
+
+    def read_block(self, addr):
+        block_num = addr // self.ratio
+        if block_num not in self.cache:
+            data = self.reader.read_block(self.address[block_num])
+            self.cache[block_num] = data
+            if len(self.cache) > 100:
+                self.cache.clear()
+        else:
+            data = self.cache[block_num]
+        offset = (addr % self.ratio) * self.CHUNK_SIZE
+        return data[offset: offset + self.CHUNK_SIZE]
+
+    def read_obj(self, blob_info):
+        if blob_info and blob_info[0]:
+            lost = blob_info[1]
+            pos = blob_info[0]
+            val = bytearray(b'\x00' * lost)
+            offset = 0
+            while 1:
+                readed = min(lost, 250)
+
+                block = self.read_block(pos)
+                val[offset: offset + readed] = block[6: 6 + readed]
+                lost -= readed
+                offset += readed
+                pos = unpack('I', block[:4])[0]
+                if pos == 0:
+                    break
+            return val
+        else:
+            return None
+
+
 class Reader1CD:
 
     __instance = None
@@ -171,19 +217,20 @@ class Reader1CD:
     def __init__(self, file_name):
         self.file_name = file_name
         self.db_file = open(file_name, 'rb')
-        self.reader = BlockReader(self.db_file)
+        self.reader = FileBlockReader(self.db_file)
         self.tables = None
         self.version = None
         self.baseLength = None
         self.lang = None
+        BlobReader.reader = self.reader
 
     def __del__(self):
         if self.db_file:
             self.db_file.close()
             self.db_file = None
 
-    def __read_root_object(self, block_info):
-        obj_data = self.reader.read_obj(obj_info=block_info)
+    def __read_root_object(self, obj_addr):
+        obj_data = self.reader.read_obj(obj_addr)
         root_info = utils.read_struct(obj_data, '32si')
         lang = root_info[0].rstrip(b'\x00').decode()
 
@@ -194,7 +241,8 @@ class Reader1CD:
         return tables, lang
 
     def read(self):
-        buffer = self.db_file.read(PAGE_SIZE)
+        block_num = 0
+        buffer = self.reader.read_block(0)
         while buffer:
             block_info = utils.read_struct(buffer, '8s3iI')
             if block_info[0] == b'1CDBMSV8':
@@ -205,11 +253,11 @@ class Reader1CD:
                 if block_info[4] == 0:
                     pass
                 else:
-                    tables, self.lang = self.__read_root_object(buffer)
+                    tables, self.lang = self.__read_root_object(block_num)
                     self.tables = {table.name.lower(): table for table in tables}
                     break
-
-            buffer = self.db_file.read(PAGE_SIZE)
+            block_num += 1
+            buffer = self.reader.read_block(block_num)
         logger.info('version: %s' % self.version)
         logger.info('lang: %s' % self.lang)
         logger.info('base length: %s' % self.baseLength)
@@ -275,6 +323,7 @@ class Reader1CD:
                 yield values
 
     def __read_blob(self, table_desc, blob_info):
+        return table_desc.blob_reader.read_obj(blob_info)
         if table_desc.blob_data is None:
             table_desc.blob_data = self.reader.read_obj(table_desc.blob_addr)
 

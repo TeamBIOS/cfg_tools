@@ -108,14 +108,14 @@ class StoreReader(reader_1cd.Reader1CD):
                 obj['files'] = [{
                     'hash': row[11],
                     'packed': row[9],
-                    'name': 'info'
+                    'name': 'info.txt'
                 }]
             else:
                 obj['name'] = row[5]
                 obj['files'] = [{
                     'data': row[9],
                     'packed': row[8],
-                    'name': 'info'
+                    'name': 'info.txt'
                 }]
         if not self.format_83:
             for obj in objects.values():
@@ -247,20 +247,20 @@ class StoreReader(reader_1cd.Reader1CD):
                         self.__write_file(cf_files['module'], obj_path + 'Модуль.txt')
                     else:
                         for file_name in cf_files:
-                            if file_name == 'info':
-                                continue
-                            elif file_name == 'form' and obj['class'] and obj['class'].type == 'form':
+                            # if file_name == 'info':
+                            #     continue
+                            if file_name == 'form' and obj['class'] and obj['class'].type == 'form':
                                 self.__write_file(cf_files['form'], obj_path + 'Форма.txt')
                                 files.append(obj_path + 'Форма.txt')
                             elif file_name == 'module' and obj['class'] and obj['class'].type == 'form':
                                 self.__write_file(cf_files['module'], obj_path + 'Модуль.txt')
                                 files.append(obj_path + 'Модуль.txt')
                             else:
-                                self.__write_file(cf_files[file_name], '%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
-                                files.append('%s%s.txt' % (os.path.join(obj_path, name + '.'), file_name))
+                                self.__write_file(cf_files[file_name], '%s%s' % (os.path.join(obj_path, name + '.'), file_name))
+                                files.append('%s.%s' % (os.path.join(obj_path, name), file_name))
                 else:
-                    self.__write_file(data, os.path.join(obj_path, name + '.txt'))
-                    files.append(os.path.join(obj_path, name + '.txt'))
+                    self.__write_file(data, os.path.join(obj_path, name))
+                    files.append(os.path.join(obj_path, name))
         logger.debug('Saved %s files' % len(files))
         return files
 

@@ -1,4 +1,4 @@
-from cfg_tools.common import BlockReader
+from cfg_tools.common import FileBlockReader
 from struct import unpack
 import datetime
 import logging
