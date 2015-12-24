@@ -11,9 +11,6 @@
         <class id="7dcd43d9-aca5-4926-b549-1842e6a4e8cf" type="common"      multiple="ОбщиеКартинки"                single="ОбщиеКартинки"                />
         <class id="1c57eabe-7349-44b3-b1de-ebfeab67b47d" type="common"      multiple="ГруппыКоманд"                 single="ГруппыКоманд"                 />
         <class id="58848766-36ea-4076-8800-e91eb49590d7" type="common"      multiple="ЭлементыСтиля"                single="ЭлементыСтиля"                />
-        <class id="cc9df798-7c94-4616-97d2-7aa0b7bc515e" type="common"      multiple="ПакетыXDTO"                   single="ПакетыXDTO"                   />
-        <class id="8657032e-7740-4e1d-a3ba-5dd6e8afb78f" type="common"      multiple="WebСервисы"                   single="WebСервисы"                   />
-        <class id="0fffc09c-8f4c-47cc-b41c-8d5c5a221d79" type="common"      multiple="HttpСервисы"                  single="HttpСервисы"                  />
         <class id="5274d9fc-9c3a-4a71-8f5e-a0db8ab23de5" type="common"      multiple="ВнешниеИсточникиДанных"       single="ВнешниеИсточникиДанных"       />
         <class id="4612bd75-71b7-4a5c-8cc5-2b0b65f9fa0d" type="common"      multiple="ЖурналыДокументов"            single="ЖурналыДокументов"            />
         <class id="238e7e88-3c5f-48b2-8a3b-81ebbecb20ed" type="common"      multiple="ПланыСчетов"                  single="ПланыСчетов"                  />
@@ -47,10 +44,16 @@
         <class id="39bddf6a-0c3c-452b-921c-d99cfa1c2f1b" type="interface"   multiple="Интерфейсы"                   single="Интерфейсы"                   />
         <class id="9cd510ce-abfc-11d4-9434-004095e12fc7" type="common"      multiple="Языки"                        single="Языки"                        />
         <class id="274bf899-db0e-4df6-8ab5-67bf6371ec0b" type="common"      multiple="Перерасчеты"                  single="Перерасчеты"                  />
-        <class id="d26096fb-7a5d-4df9-af63-47d04771fa9b" type="common"      multiple="WSссылки"                     single="WSссылки"                      description="WS-ссылки для 8.1"/>
 
-   </metadata>
+        <class id="d26096fb-7a5d-4df9-af63-47d04771fa9b" type="wsref"       multiple="WSСсылки"                     single="WSСсылка"                      description="WS-ссылки для 8.1"/>
+        <class id="cc9df798-7c94-4616-97d2-7aa0b7bc515e" type="common"      multiple="ПакетыXDTO"                   single="ПакетXDTO"                   />
+        <class id="8657032e-7740-4e1d-a3ba-5dd6e8afb78f" type="common"      multiple="WebСервисы"                   single="WebСервис"                   />
+        <class id="0fffc09c-8f4c-47cc-b41c-8d5c5a221d79" type="common"      multiple="HttpСервисы"                  single="HttpСервис"                  />
 
+    </metadata>
+    <type name="wsref">
+        <file id=".0" name="WSDL"/>
+    </type>
     <type name="common">
         <file id=".0" name="МодульОбъекта"/>
         <file id=".3" name="МодульМенеджера"/>
