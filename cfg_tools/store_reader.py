@@ -35,8 +35,9 @@ class StoreReader(reader_1cd.Reader1CD):
         self.meta_classes = None
         self.format_83 = True
         self.root_uid = None
-
         self.objects_info = None
+
+        self.read()
 
     def __read_objects(self):
         if self.objects_info is not None:
@@ -203,12 +204,8 @@ class StoreReader(reader_1cd.Reader1CD):
                 'date': row[2]
             } for row in gen}
 
-    def export_version(self, version_number, path, hierarchy=False):
+    def __save_objects(self, objects, path, hierarchy=False):
         objects_path = os.path.join(os.path.dirname(self.file_name), 'data', 'objects')
-        self.__load_classes()
-        self.__read_objects()
-
-        objects = self.__get_objects_by_version(version_number)
         files = []
         for obj in objects:
             meta_class = obj['class']
@@ -266,5 +263,18 @@ class StoreReader(reader_1cd.Reader1CD):
                     files.append(os.path.join(obj_path, name + '.txt'))
         logger.debug('Saved %s files' % len(files))
         return files
+
+    def export_version(self, version_number, path, hierarchy=False):
+        self.__load_classes()
+        self.__read_objects()
+
+        objects = self.__get_objects_by_version(version_number)
+        return self.__save_objects(objects, path, hierarchy)
+
+    def export_object(self, obj_guid, path, hierarchy=False):
+        self.__load_classes()
+        self.__read_objects()
+        objects = []
+        return self.__save_objects(objects, path, hierarchy)
 
 logger = logging.getLogger('Store')

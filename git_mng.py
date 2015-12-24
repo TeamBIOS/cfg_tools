@@ -66,6 +66,7 @@ class GitMng:
         pass
 
     def pull(self):
+        self.gc()
         self.__execute_cmd('git pull -v %s' % self.remote_url)
 
     def gc(self):

@@ -33,7 +33,6 @@ class Mng:
     def __init_reader(self):
         if self.reader is None:
             self.reader = store_reader.StoreReader(self.store_path)
-            self.reader.read()
 
     def __before_export(self):
         self.load_authors()
