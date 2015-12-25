@@ -8,6 +8,8 @@ import os
 
 class Mng:
 
+    push_step = 0
+
     @staticmethod
     def init_log(log_level, file_name=None):
         logging.basicConfig(level=log_level,
@@ -64,6 +66,7 @@ class Mng:
                     self.local_repo = section['local_repo']
                 if 'remote_repo' in section:
                     self.remote_repo_url = section['remote_repo']
+        logger.info('Загружены настройки')
 
     def __save_exported_version_info(self, version):
         with open(self.__last_version_file(), 'w') as f:
@@ -74,8 +77,9 @@ class Mng:
         return os.path.join(self.local_repo, 'last_version.txt')
 
     def __export_version(self, version, commit=True):
-        logger.info('================================== Export version: %s' % version)
         version_info = self.reader.versions[version]
+        logger.info('================================== Export version: %s' % version)
+        logger.debug(str(version_info))
         self.reader.export_version(version, self.local_repo, True)
         self.__save_exported_version_info(version)
         if commit:
@@ -83,9 +87,11 @@ class Mng:
 
     def init_repo(self, check_exist=True):
         if check_exist and os.path.exists(os.path.join(self.local_repo, '.git')):
+            logger.info('Репозиторий уже существует, инициализация не выполнена')
             return
         self.repo.init()
         self.repo.pull()
+        logger.info('Репозиторий инициализирован')
         with open(os.path.join(self.local_repo, '.gitignore'), 'w+') as f:
             f.write('# Service files')
             f.write('authors.csv')
@@ -115,6 +121,7 @@ class Mng:
                 new_users = True
 
         if new_users:
+            logger.info('Создан/обновлен файл соответствия пользователей')
             with open(file_name, 'w', encoding='utf-8') as f:
                 for user in self.reader.users.values():
                     f.write('%s; %s; %s\n' % (user.name, user.git_name, user.email))
@@ -129,19 +136,24 @@ class Mng:
         self.__before_export()
         self.__export_version(version, commit)
 
-    def export_versions(self, start_version, last_version=9999999, commit=True, push_step=0):
+    def export_versions(self, start_version, last_version=9999999, commit=True):
         self.__before_export()
         count = 0
         for v in sorted(self.reader.versions):
             if start_version <= v <= last_version:
                 self.__export_version(v, commit)
                 count += 1
-                if push_step and count == push_step:
+                if self.push_step and count == self.push_step:
                     count = 0
                     self.repo.push()
+        self.repo.push()
 
-    def export_new(self, push_step=0):
+    def export_new(self):
+        logger.info('============================================')
+        logger.info('==== Выгрузка новых версий в GIT')
+        logger.info('============================================\n')
         self.repo.pull()
+        logger.info('Получены данные из центрального репозитория')
         start_version = 0
         if os.path.exists(self.__last_version_file()):
             with open(self.__last_version_file(), 'r') as f:
@@ -150,10 +162,11 @@ class Mng:
                 except:
                     logger.critical('Не удалось определить версию предидущей выгрузки')
                     return False
+        logger.info('Последная выгруженная версия: %s' % start_version)
         start_version += 1
         self.__before_export()
-        self.export_versions(start_version, push_step=push_step)
-        self.repo.push()
+        logger.info('Последная версия в хранилище: %s' % max(self.reader.versions))
+        self.export_versions(start_version)
         return True
 
 

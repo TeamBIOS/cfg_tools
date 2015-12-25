@@ -5,7 +5,7 @@ import re
 from datetime import datetime
 import cfg_tools.utils as utils
 from cfg_tools.common import FileBlockReader, BlockReader, guid
-
+import os
 
 logger = None
 
@@ -216,13 +216,20 @@ class Reader1CD:
 
     def __init__(self, file_name):
         self.file_name = file_name
-        self.db_file = open(file_name, 'rb')
-        self.reader = FileBlockReader(self.db_file)
+        self.db_file = None
         self.tables = None
         self.version = None
         self.baseLength = None
         self.lang = None
+        self.__open_reader()
         BlobReader.reader = self.reader
+
+    def __open_reader(self):
+        if not os.path.exists(self.file_name):
+            raise Exception('Файл хранилища не существует')
+
+        self.db_file = open(self.file_name, 'rb')
+        self.reader = FileBlockReader(self.db_file)
 
     def __del__(self):
         if self.db_file:
@@ -258,10 +265,10 @@ class Reader1CD:
                     break
             block_num += 1
             buffer = self.reader.read_block(block_num)
-        logger.info('version: %s' % self.version)
-        logger.info('lang: %s' % self.lang)
-        logger.info('base length: %s' % self.baseLength)
-        logger.info('tables count: %s' % len(self.tables))
+        logger.debug('version: %s' % self.version)
+        logger.debug('lang: %s' % self.lang)
+        logger.debug('base length: %s' % self.baseLength)
+        logger.debug('tables count: %s' % len(self.tables))
 
     def print_tables(self, print_fields=1):
         for table in self.tables:
