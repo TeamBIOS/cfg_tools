@@ -20,10 +20,19 @@ class User(common.ref):
         self.git_name = self.name
 
 
+class MetaObject(common.ref):
+
+    def __init__(self, data):
+        super(MetaObject, self).__init__(data, None)
+        self.meta_class = None
+        self.parent = None
+        self.files = []
+
+
 class StoreReader(reader_1cd.Reader1CD):
 
     @staticmethod
-    def __write_file(data, file_name):
+    def _write_file(data, file_name):
         with open(file_name, 'wb+') as f:
             f.write(data)
             f.close()
@@ -39,123 +48,99 @@ class StoreReader(reader_1cd.Reader1CD):
 
         self.read()
 
-    def __read_objects(self):
+    def _read_objects(self):
         if self.objects_info is not None:
             for obj in self.objects_info.values():
                 obj['files'] = []
             return
         self.objects_info = {}
-        for row in self.read_table_by_name('objects', push_headers=False):
+        for row in self.read_table_by_name('OBJECTS', push_headers=False):
             obj_id = row.by_name('OBJID')
-            obj = {
-                    'guid': obj_id,
-                    'class': self.meta_classes[row[1]]
-                    if row.by_name('CLASSID') in self.meta_classes
-                    else row.by_name('CLASSID'),
-            }
+            obj = MetaObject(obj_id)
+            obj.meta_class = self.meta_classes[row.by_name('CLASSID')] if row.by_name('CLASSID') in self.meta_classes else row.by_name('CLASSID')
+            
             if not self.format_83:
-                obj['parent'] = row.by_name('PARENTID')
+                obj.parent = row.by_name('PARENTID')
             self.objects_info[obj_id] = obj
-            if obj['parent'] == common.guid.EMPTY:
-                self.root_uid = obj_id
         if not self.format_83:
+            self._set_parents()
+
+    def _set_parents(self):
+        if self.root_uid is None:
             for obj in self.objects_info.values():
-                if obj['parent'] != common.guid.EMPTY and \
-                   obj['parent'] != self.root_uid and \
-                   obj['parent'] in self.objects_info:
-                    obj['parent'] = self.objects_info[obj['parent']]
-                else:
-                    obj['parent'] = None
-
-    def __set_parents(self, objects):
-        if len(objects):
-            return
-        parents = {}
-        for o in objects:
-            if o['parent'] in self.objects_info:
-                o['parent'] = self.objects_info[o['parent']]
+                if obj.parent == common.guid.EMPTY:
+                    self.root_uid = obj
+                    break
+        for obj in self.objects_info.values():
+            if isinstance(obj.parent, common.guid) and \
+               obj.parent != common.guid.EMPTY and \
+               obj.parent != self.root_uid and \
+               obj.parent in self.objects_info:
+                obj.parent = self.objects_info[obj.parent]
             else:
-                if o['parent'] not in parents:
-                    parents[o['parent']] = [o]
-                else:
-                    parents[o['parent']].append(o)
-        gen = self.read_table_by_name('objects',
-                                      filter_function=lambda x: x[6] in parents,
-                                      push_headers=False)
-        objects = []
-        for row in gen:
-            parent_obj = self.__create_obj(self, row)
-            self.objects_info[row[0]] = parent_obj
-            for o in parents[row[0]]:
-                o['parent'] = parent_obj
-            objects.extend(parents[row[0]])
-        self.__set_parents(objects)
+                obj.parent = None
 
-    def __get_objects_by_version(self, version_number):
+    def _get_objects_by_version(self, version_number):
         objects = {}
-        count = 0
+        row_version = 0
         for row in self.read_table_by_name('HISTORY',
                                            push_headers=False):
-            count += 1
+            assert row_version <= row.by_name('VERNUM')
+            row_version = row.by_name('VERNUM')
+
             obj_id = row.by_name('OBJID')
             obj = self.objects_info[obj_id]
-
-            if row.by_name('VERNUM') != version_number:
-                continue
-            objects[obj_id] = obj
-            obj['name'] = row.by_name('OBJNAME')
+            obj.name = row.by_name('OBJNAME')
             if self.format_83:
-                obj['parent'] = row.by_name('PARENTID')
-                obj['files'] = [{
-                    'hash': row.by_name('DATAHASH'),
-                    'packed': row.by_name('DATAPACKED'),
-                    'name': 'info.txt'
-                }]
-            else:
-                obj['files'] = [{
-                    'data': row.by_name('OBJDATA'),
-                    'packed': row.by_name('DATAPACKED'),
-                    'name': 'info.txt'
-                }]
-        if not self.format_83:
-            for obj in objects.values():
-                obj['files'][0]['data'] = self.read_blob('HISTORY', obj['files'][0]['data'])
+                obj.parent = row.by_name('PARENTID')
 
+            if row_version > version_number:
+                break
+            elif row_version != version_number:
+                continue
+            obj.files.clear()
+
+            objects[obj_id] = obj
+
+            obj.files.append({
+                'data': row.by_name('DATAHASH') if self.format_83 else row.get_blob('OBJDATA'),
+                'packed': row.by_name('DATAPACKED'),
+                'name': 'info.txt'
+            })
+        if self.format_83:
+            self._set_parents()
         gen = self.read_table_by_name('EXTERNALS',
                                       push_headers=False,
-                                      read_blob=False,
-                                      filter_function=lambda x: x.by_name('VERNUM') == version_number)
+                                      read_blob=False)
 
+        row_version = 0
         for row in gen:
-            data = row.by_name('DATAHASH') if self.format_83 else row.by_name('EXTDATA')
+            assert row_version <= row.by_name('VERNUM')
+            row_version = row.by_name('VERNUM')
+            if row_version > version_number:
+                break
+            elif row_version != version_number:
+                continue
+
+            data = row.by_name('DATAHASH') if self.format_83 else row.get_blob('EXTDATA')
             if data is None:
                 continue
             obj_id = row.by_name('OBJID')
-            if obj_id in objects:
-                files = objects[obj_id]['files']
-            else:
-                obj = objects[obj_id] = self.objects_info[obj_id]
-                files = obj['files'] = []
+            if obj_id not in objects:
+                logger.error('Найден файл не принадлежащий объекту. OBJID: %s; EXTNAME: %s' %
+                             (row.by_name('OBJID'), row.by_name('EXTNAME')))
+            assert obj_id in objects
+            objects[obj_id].files.append(
+                {
+                    'name': row.by_name('EXTNAME'),
+                    'data': data,
+                    'packed': row.by_name('DATAPACKED')
+                })
 
-            if self.format_83:
-                files.append(
-                    {
-                        'name': row.by_name('EXTNAME'),
-                        'hash': data,
-                        'packed': row.by_name('DATAPACKED')
-                    })
-            else:
-                files.append(
-                    {
-                        'name': row.by_name('EXTNAME'),
-                        'data': self.read_blob('EXTERNALS', data),
-                        'packed': row.by_name('DATAPACKED')
-                    })
-
-        logger.debug('version objects (%s) %s' % (len(objects), ', '.join([item['name'] for item in objects.values()])))
+        logger.debug('version objects (%s) %s' % (len(objects), ', '.join([item.name for item in objects.values()])))
         return [v for v in objects.values()]
 
-    def __load_classes(self):
+    def _load_classes(self):
         if self.meta_classes:
             return
         tree = etree.parse(os.path.join(os.path.dirname(__file__), 'classID.xml'))
@@ -178,32 +163,32 @@ class StoreReader(reader_1cd.Reader1CD):
                 meta_class.files = []
             self.meta_classes[utils.guid_to_bytes(cls.attrib['id'])] = meta_class
 
-    def __save_files(self, objects, path, hierarchy=False):
+    def _save_files(self, objects, path, hierarchy=False):
         objects_path = os.path.join(os.path.dirname(self.file_name), 'data', 'objects')
         files = []
         for obj in objects:
-            meta_class = obj['class']
+            meta_class = obj.meta_class
             full_name = ''
             parent = obj
             while 1:
                 if hierarchy:
-                    full_name = str(parent['class'].multiple) + os.path.sep + parent['name'] + os.path.sep + full_name
+                    full_name = str(parent.meta_class.multiple) + os.path.sep + parent.name + os.path.sep + full_name
                 else:
-                    full_name = str(parent['class'].name) + '.' + parent['name'] + '.' + full_name
-                parent = parent['parent']
+                    full_name = str(parent.meta_class.name) + '.' + parent.name + '.' + full_name
+                parent = parent.parent
                 if parent is None:
                     break
             logger.debug('Export %s' % full_name)
             obj_path = os.path.join(path, full_name)
             if hierarchy and not os.path.exists(obj_path):
                 os.makedirs(obj_path)
-            for file in obj['files']:
+            for file in obj.files:
                 name = file['name']
                 if '.' in name and name[name.rindex('.'):] in meta_class.files:
                     name = meta_class.files[name[name.rindex('.'):]]
 
                 if self.format_83:
-                    source = os.path.join(objects_path, file['hash'][:2], file['hash'][2:])
+                    source = os.path.join(objects_path, file['data'][:2], file['data'][2:])
                     with open(source, 'rb') as f:
                         data = f.read()
                         f.close()
@@ -217,33 +202,30 @@ class StoreReader(reader_1cd.Reader1CD):
                 if data[:4] == reader_cf.bytes7fffffff:
                     cf_files = reader_cf.ReaderCF.read_container(io.BytesIO(data))
                     if name == "__form__":
-                        self.__write_file(cf_files['form'], obj_path + 'Форма.txt')
-                        self.__write_file(cf_files['module'], obj_path + 'Модуль.txt')
+                        self._write_file(cf_files['form'], obj_path + 'Форма.txt')
+                        self._write_file(cf_files['module'], obj_path + 'Модуль.txt')
                     else:
                         for file_name in cf_files:
                             # if file_name == 'info':
                             #     continue
                             if file_name == 'form' and obj['class'] and obj['class'].type == 'form':
-                                self.__write_file(cf_files['form'], obj_path + 'Форма.txt')
+                                self._write_file(cf_files['form'], obj_path + 'Форма.txt')
                                 files.append(obj_path + 'Форма.txt')
                             elif file_name == 'module' and obj['class'] and obj['class'].type == 'form':
-                                self.__write_file(cf_files['module'], obj_path + 'Модуль.txt')
+                                self._write_file(cf_files['module'], obj_path + 'Модуль.txt')
                                 files.append(obj_path + 'Модуль.txt')
                             else:
-                                self.__write_file(cf_files[file_name], '%s%s' % (os.path.join(obj_path, name + '.'), file_name))
+                                self._write_file(cf_files[file_name], '%s%s' % (os.path.join(obj_path, name + '.'), file_name))
                                 files.append('%s.%s' % (os.path.join(obj_path, name), file_name))
                 else:
-                    self.__write_file(data, os.path.join(obj_path, name))
+                    self._write_file(data, os.path.join(obj_path, name))
                     files.append(os.path.join(obj_path, name))
         logger.debug('Saved %s files' % len(files))
         return files
 
     def read(self):
         super(StoreReader, self).read()
-        for f in self.get_table_info('HISTORY').fields:
-            if f.name == 'OBJDATA':
-                self.format_83 = False
-                break
+        self.format_83 = 'DATAHASH' in self.get_table_info('HISTORY').fields_indexes
 
     def read_users(self):
         if not self.users:
@@ -266,17 +248,17 @@ class StoreReader(reader_1cd.Reader1CD):
             } for row in gen}
 
     def export_version(self, version_number, path, hierarchy=False):
-        self.__load_classes()
-        self.__read_objects()
+        self._load_classes()
+        self._read_objects()
 
-        objects = self.__get_objects_by_version(version_number)
-        return self.__save_files(objects, path, hierarchy)
+        objects = self._get_objects_by_version(version_number)
+        return self._save_files(objects, path, hierarchy)
 
     def export_object(self, obj_guid, path, hierarchy=False):
-        self.__load_classes()
-        self.__read_objects()
+        self._load_classes()
+        self._read_objects()
         objects = []
-        return self.__save_files(objects, path, hierarchy)
+        return self._save_files(objects, path, hierarchy)
 
 
 logger = logging.getLogger('Store')
