@@ -224,17 +224,17 @@ class Reader1CD:
         self.__open_reader()
         BlobReader.reader = self.reader
 
+    def __del__(self):
+        if self.db_file:
+            self.db_file.close()
+            self.db_file = None
+
     def __open_reader(self):
         if not os.path.exists(self.file_name):
             raise Exception('Файл хранилища не существует')
 
         self.db_file = open(self.file_name, 'rb')
         self.reader = FileBlockReader(self.db_file)
-
-    def __del__(self):
-        if self.db_file:
-            self.db_file.close()
-            self.db_file = None
 
     def __read_root_object(self, obj_addr):
         obj_data = self.reader.read_obj(obj_addr)

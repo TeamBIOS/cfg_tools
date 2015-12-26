@@ -39,18 +39,18 @@ class BlockReader:
     def __init__(self):
         pass
 
-    def set_position(self, addr):
+    def _set_position(self, addr):
         pass
 
-    def read(self, n):
+    def _read(self, n):
         return None
 
-    def read_block(self, addr):
-        self.set_position(addr)
-        return self.read()
-
-    def read_iter(self, obj_size, addreses):
+    def _get_obj_addr_iter(self, address):
         pass
+
+    def read_block(self, addr):
+        self._set_position(addr)
+        return self._read()
 
 
 class FileBlockReader(BlockReader):
@@ -60,10 +60,10 @@ class FileBlockReader(BlockReader):
     def __init__(self, db_file, ):
         self.db_file = db_file
 
-    def set_position(self, addr):
+    def _set_position(self, addr):
         self.db_file.seek(self.PAGE_SIZE * addr)
 
-    def read(self, n=None):
+    def _read(self, n=None):
         return self.db_file.read(self.PAGE_SIZE if n is None else n)
 
     def read_obj(self, obj_addr):
@@ -78,7 +78,13 @@ class FileBlockReader(BlockReader):
         return obj_data
 
     def get_data_address(self, info_address):
-        obj_size, blocks_numbers = self.parse_block_info(self.read_block(info_address))
+        data = self.read_block(info_address)
+        obj_size = unpack('i', data[8:12])[0]
+        if obj_size == 0:
+            return 0, None
+        block_count = (obj_size - 1) // 0x3ff000 + 1
+        blocks_numbers = unpack(str(block_count) + 'i', data[24: 24 + block_count * 4])
+
         if obj_size == 0 or blocks_numbers is None:
             return obj_size, None
         address = []
@@ -89,31 +95,14 @@ class FileBlockReader(BlockReader):
             address.extend(unpack(str(sub_blocks_count) + 'i', block_info[4: 4 + sub_blocks_count * 4]))
         return obj_size, address
 
-    def parse_block_info(self, data):
-
-        obj_size = unpack('i', data[8:12])[0]
-        if obj_size == 0:
-            return 0, None
-        block_count = (obj_size - 1) // 0x3ff000 + 1
-        block_numbers = unpack(str(block_count) + 'i', data[24: 24 + block_count * 4])
-
-        return obj_size, block_numbers
-
     def read_obj_iter(self, obj_addr, part_size=PAGE_SIZE):
         obj_size, address = self.get_data_address(obj_addr)
-        # obj_size, blocks_numbers = self.parse_block_info(obj_info if obj_info is not None else self.read_block(obj_addr))
         yield obj_size
         if obj_size == 0:
             return
         lost = obj_size
         buff_pos = 0
         buff_lost = 0
-        # address = []
-        # for addr in blocks_numbers:
-        #     block_info = self.read_block(addr)
-        #
-        #     sub_blocks_count = unpack('i', block_info[:4])[0]
-        #     address.extend(unpack(str(sub_blocks_count) + 'i', block_info[4: 4 + sub_blocks_count * 4]))
 
         address_iter = iter(address)
 
@@ -121,10 +110,10 @@ class FileBlockReader(BlockReader):
             for addr in address_iter:
                 if not addr:
                     return
-                self.set_position(addr)
+                self._set_position(addr)
                 readed = min(lost, self.PAGE_SIZE)
                 lost -= readed
-                buff = self.read(readed)
+                buff = self._read(readed)
                 yield buff
         else:
             while 1:
