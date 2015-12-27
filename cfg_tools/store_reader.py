@@ -53,7 +53,7 @@ class StoreReader(reader_1cd.Reader1CD):
     def _read_objects(self):
         if self.objects_info is not None:
             for obj in self.objects_info.values():
-                obj['files'] = []
+                obj.files.clear()
             return
         self.objects_info = {}
         for row in self.read_table_by_name('OBJECTS', push_headers=False):
