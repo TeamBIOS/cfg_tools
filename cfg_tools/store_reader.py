@@ -6,7 +6,9 @@ from cfg_tools.common import ref
 from cfg_tools import reader_cf
 import io
 import logging
+from struct import unpack
 from cfg_tools import common
+import binascii
 
 
 logger = None
@@ -45,7 +47,7 @@ class StoreReader(reader_1cd.Reader1CD):
         self.format_83 = True
         self.root_uid = None
         self.objects_info = None
-
+        self.depot83_files_reader = None
         self.read()
 
     def _read_objects(self):
@@ -188,10 +190,7 @@ class StoreReader(reader_1cd.Reader1CD):
                     name = meta_class.files[name[name.rindex('.'):]]
 
                 if self.format_83:
-                    source = os.path.join(objects_path, file['data'][:2], file['data'][2:])
-                    with open(source, 'rb') as f:
-                        data = f.read()
-                        f.close()
+                    data = self.depot83_files_reader.get_file(file['data'])
                 else:
                     data = file['data']
                 if data is None:
@@ -206,17 +205,8 @@ class StoreReader(reader_1cd.Reader1CD):
                         self._write_file(cf_files['module'], obj_path + 'Модуль.txt')
                     else:
                         for file_name in cf_files:
-                            # if file_name == 'info':
-                            #     continue
-                            if file_name == 'form' and obj['class'] and obj['class'].type == 'form':
-                                self._write_file(cf_files['form'], obj_path + 'Форма.txt')
-                                files.append(obj_path + 'Форма.txt')
-                            elif file_name == 'module' and obj['class'] and obj['class'].type == 'form':
-                                self._write_file(cf_files['module'], obj_path + 'Модуль.txt')
-                                files.append(obj_path + 'Модуль.txt')
-                            else:
-                                self._write_file(cf_files[file_name], '%s%s' % (os.path.join(obj_path, name + '.'), file_name))
-                                files.append('%s.%s' % (os.path.join(obj_path, name), file_name))
+                            self._write_file(cf_files[file_name], '%s%s' % (os.path.join(obj_path, name + '.'), file_name))
+                            files.append('%s.%s' % (os.path.join(obj_path, name), file_name))
                 else:
                     self._write_file(data, os.path.join(obj_path, name))
                     files.append(os.path.join(obj_path, name))
@@ -226,6 +216,8 @@ class StoreReader(reader_1cd.Reader1CD):
     def read(self):
         super(StoreReader, self).read()
         self.format_83 = 'DATAHASH' in self.get_table_info('HISTORY').fields_indexes
+        if self.format_83:
+            self.depot83_files_reader = Depot83Reader(os.path.join(os.path.dirname(self.file_name), 'data'))
 
     def read_users(self):
         if not self.users:
@@ -259,6 +251,56 @@ class StoreReader(reader_1cd.Reader1CD):
         self._read_objects()
         objects = []
         return self._save_files(objects, path, hierarchy)
+
+
+class Depot83Reader:
+
+    def __init__(self, path):
+        self.path = path
+        self.files = []
+        self.init()
+
+    def init(self):
+        self.files.clear()
+        ind_files = []
+        pack_files = []
+        for root, dirs, files in os.walk(os.path.join(self.path, 'pack')):
+            for file in files:
+                if file.endswith(".ind"):
+                    ind_files.append(os.path.join(root, file))
+                elif file.endswith('.pck'):
+                    pack_files.append(os.path.join(root, file))
+        for file in ind_files:
+            with open(file, 'rb') as stream:
+                sub_files = {}
+                self.files.append({
+                    'name': file[:-4] + '.pck',
+                    'files': sub_files
+                })
+                sign = unpack('4s4sI', stream.read(12))
+                count = sign[2]
+                for i in range(count):
+                    data = stream.read(28)
+                    sub_files[binascii.hexlify(data[:20]).decode()] = unpack('q', data[20:])[0]
+                    if not data:
+                        break
+                stream.close()
+
+    def get_file(self, hash_name):
+        logger.debug(hash_name)
+        for file in self.files:
+            if hash_name in file['files']:
+                with open(file['name'], 'rb') as stream:
+                    stream.seek(file['files'][hash_name])
+                    size = unpack('q', stream.read(8))[0]
+                    data = stream.read(size)
+                    stream.close()
+                    return data
+        source = os.path.join(os.path.join(self.path, 'objects'), hash_name[:2], hash_name[2:])
+        with open(source, 'rb') as stream:
+            data = stream.read()
+            stream.close()
+            return data
 
 
 logger = logging.getLogger('Store')

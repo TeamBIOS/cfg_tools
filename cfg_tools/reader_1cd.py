@@ -167,7 +167,6 @@ class Row(list):
         return val
 
 
-
 class BlobReader(BlockReader):
 
     CHUNK_SIZE = 256
