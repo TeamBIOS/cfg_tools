@@ -148,7 +148,7 @@ class StoreReader(reader_1cd.Reader1CD):
         tree = etree.parse(os.path.join(os.path.dirname(__file__), 'classID.xml'))
         file_groups = {
             group.attrib['name']: {
-                                    file.attrib['id']: file.attrib['name']
+                                    file.attrib['id']: (file.attrib['name'], file.attrib['content_type'])
                                     for file in group.getiterator('file')}
             for group in tree.getiterator('type')
         }
@@ -165,18 +165,47 @@ class StoreReader(reader_1cd.Reader1CD):
                 meta_class.files = []
             self.meta_classes[utils.guid_to_bytes(cls.attrib['id'])] = meta_class
 
+    def _unpuck_file(self, data, name, meta_class):
+        if '.' in name and name[name.rindex('.'):] in meta_class.files:
+            content_type = meta_class.files[name[name.rindex('.'):]][1]
+            name = meta_class.files[name[name.rindex('.'):]][0]
+            if content_type == 'module':
+                ext = '.txt'
+            else:
+                ext = '.mxl'
+        else:
+            ext = ''
+            content_type = None
+
+        if data[:4] == reader_cf.bytes7fffffff:
+            cf_files = reader_cf.ReaderCF.read_container(io.BytesIO(data))
+            # if name == "__form__":
+            #     self._write_file(cf_files['form'], obj_path + 'Форма.txt')
+            #     self._write_file(cf_files['module'], obj_path + 'Модуль.txt')
+            # else:
+            for file_name in cf_files:
+                if file_name == 'info':
+                    continue
+                if content_type == 'form' and file_name == 'form':
+                    yield 'Форма.mxl', cf_files[file_name]
+                elif content_type == 'form' and file_name == 'module':
+                    yield 'Модуль.txt', cf_files[file_name]
+                else:
+                    yield name + file_name + ext, cf_files[file_name]
+
+        else:
+            yield name + ext, data
+
     def _save_files(self, objects, path, hierarchy=False):
-        objects_path = os.path.join(os.path.dirname(self.file_name), 'data', 'objects')
         files = []
         for obj in objects:
             meta_class = obj.meta_class
             full_name = ''
             parent = obj
             while 1:
-                if hierarchy:
-                    full_name = str(parent.meta_class.multiple) + os.path.sep + parent.name + os.path.sep + full_name
-                else:
-                    full_name = str(parent.meta_class.name) + '.' + parent.name + '.' + full_name
+                full_name = str(parent.meta_class.multiple) + os.path.sep + parent.name + os.path.sep + full_name \
+                    if hierarchy else \
+                    str(parent.meta_class.name) + '.' + parent.name + '.' + full_name
                 parent = parent.parent
                 if parent is None:
                     break
@@ -184,32 +213,18 @@ class StoreReader(reader_1cd.Reader1CD):
             obj_path = os.path.join(path, full_name)
             if hierarchy and not os.path.exists(obj_path):
                 os.makedirs(obj_path)
-            for file in obj.files:
-                name = file['name']
-                if '.' in name and name[name.rindex('.'):] in meta_class.files:
-                    name = meta_class.files[name[name.rindex('.'):]]
-
-                if self.format_83:
-                    data = self.depot83_files_reader.get_file(file['data'])
-                else:
-                    data = file['data']
+            for file_info in obj.files:
+                if file_info['data'] is None:
+                    continue
+                data = self.depot83_files_reader.get_file(file_info['data']) if self.format_83 else file_info['data']
                 if data is None:
                     continue
-                if file['packed']:
+                if file_info['packed']:
                     data = utils.inflate_inmemory(data)
-
-                if data[:4] == reader_cf.bytes7fffffff:
-                    cf_files = reader_cf.ReaderCF.read_container(io.BytesIO(data))
-                    if name == "__form__":
-                        self._write_file(cf_files['form'], obj_path + 'Форма.txt')
-                        self._write_file(cf_files['module'], obj_path + 'Модуль.txt')
-                    else:
-                        for file_name in cf_files:
-                            self._write_file(cf_files[file_name], '%s%s' % (os.path.join(obj_path, name + '.'), file_name))
-                            files.append('%s.%s' % (os.path.join(obj_path, name), file_name))
-                else:
+                for name, data in self._unpuck_file(data, file_info['name'], meta_class):
                     self._write_file(data, os.path.join(obj_path, name))
                     files.append(os.path.join(obj_path, name))
+
         logger.debug('Saved %s files' % len(files))
         return files
 
@@ -287,7 +302,6 @@ class Depot83Reader:
                 stream.close()
 
     def get_file(self, hash_name):
-        logger.debug(hash_name)
         for file in self.files:
             if hash_name in file['files']:
                 with open(file['name'], 'rb') as stream:
