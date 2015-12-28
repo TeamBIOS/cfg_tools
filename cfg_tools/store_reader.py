@@ -32,6 +32,55 @@ class MetaObject(common.Ref):
         self.files = []
 
 
+class Depot83Reader:
+
+    def __init__(self, path):
+        self.path = path
+        self.files = []
+        self.init()
+
+    def init(self):
+        self.files.clear()
+        ind_files = []
+        pack_files = []
+        for root, dirs, files in os.walk(os.path.join(self.path, 'pack')):
+            for file in files:
+                if file.endswith(".ind"):
+                    ind_files.append(os.path.join(root, file))
+                elif file.endswith('.pck'):
+                    pack_files.append(os.path.join(root, file))
+        for file in ind_files:
+            with open(file, 'rb') as stream:
+                sub_files = {}
+                self.files.append({
+                    'name': file[:-4] + '.pck',
+                    'files': sub_files
+                })
+                sign = unpack('4s4sI', stream.read(12))
+                count = sign[2]
+                for i in range(count):
+                    data = stream.read(28)
+                    sub_files[binascii.hexlify(data[:20]).decode()] = unpack('q', data[20:])[0]
+                    if not data:
+                        break
+                stream.close()
+
+    def get_file(self, hash_name):
+        for file in self.files:
+            if hash_name in file['files']:
+                with open(file['name'], 'rb') as stream:
+                    stream.seek(file['files'][hash_name])
+                    size = unpack('q', stream.read(8))[0]
+                    data = stream.read(size)
+                    stream.close()
+                    return data
+        source = os.path.join(os.path.join(self.path, 'objects'), hash_name[:2], hash_name[2:])
+        with open(source, 'rb') as stream:
+            data = stream.read()
+            stream.close()
+            return data
+
+
 class StoreReader(reader_1cd.Reader1CD):
 
     @staticmethod
@@ -61,7 +110,7 @@ class StoreReader(reader_1cd.Reader1CD):
             obj_id = row.by_name('OBJID')
             obj = MetaObject(obj_id)
             obj.meta_class = self.meta_classes[row.by_name('CLASSID')] if row.by_name('CLASSID') in self.meta_classes else row.by_name('CLASSID')
-            
+
             if not self.format_83:
                 obj.parent = row.by_name('PARENTID')
             self.objects_info[obj_id] = obj
@@ -69,11 +118,6 @@ class StoreReader(reader_1cd.Reader1CD):
             self._set_parents()
 
     def _set_parents(self):
-        if self.root_uid is None:
-            for obj in self.objects_info.values():
-                if obj.parent == common.Guid.EMPTY:
-                    self.root_uid = obj
-                    break
         for obj in self.objects_info.values():
             if isinstance(obj.parent, common.Guid) and \
                obj.parent != common.Guid.EMPTY and \
@@ -160,14 +204,17 @@ class StoreReader(reader_1cd.Reader1CD):
                 cls.attrib['single'])
             meta_class.type = cls.attrib['type'] if 'type' in cls.attrib else None
             meta_class.multiple = cls.attrib['multiple'] if 'multiple' in cls.attrib else meta_class.name
-            if meta_class.type is not None and meta_class.type in file_groups:
+
+            meta_class.files = {
+                file.attrib['id']: (file.attrib['name'], file.attrib['content_type'])
+                for file in cls.getiterator('file')
+                }
+            if len(meta_class.files) == 0 and meta_class.type is not None and meta_class.type in file_groups:
                 meta_class.files = file_groups[meta_class.type]
-            else:
-                meta_class.files = []
             self.meta_classes[utils.guid_to_bytes(cls.attrib['id'])] = meta_class
 
     def _unpuck_file(self, data, name, meta_class):
-        if '.' in name and name[name.rindex('.'):] in meta_class.files:
+        if meta_class and '.' in name and name[name.rindex('.'):] in meta_class.files:
             content_type = meta_class.files[name[name.rindex('.'):]][1]
             name = meta_class.files[name[name.rindex('.'):]][0]
             if content_type == 'module':
@@ -178,14 +225,9 @@ class StoreReader(reader_1cd.Reader1CD):
                 ext = '.mxl'
         else:
             ext = ''
-            content_type = None
 
         if data[:4] == reader_cf.bytes7fffffff:
             cf_files = reader_cf.ReaderCF.read_container(io.BytesIO(data))
-            # if name == "__form__":
-            #     self._write_file(cf_files['form'], obj_path + 'Форма.txt')
-            #     self._write_file(cf_files['module'], obj_path + 'Модуль.txt')
-            # else:
             for file_name in cf_files:
                 if file_name == 'info':
                     continue
@@ -207,12 +249,13 @@ class StoreReader(reader_1cd.Reader1CD):
         files = []
         for obj in objects:
             meta_class = obj.meta_class
+            str_guid = str(obj.data)
             full_name = ''
             parent = obj
             while 1:
-                full_name = str(parent.meta_class.multiple) + os.path.sep + parent.name + os.path.sep + full_name \
-                    if hierarchy else \
-                    str(parent.meta_class.name) + '.' + parent.name + '.' + full_name
+                full_name = os.path.sep.join([str(parent.meta_class.multiple), parent.name, full_name]) \
+                            if hierarchy else \
+                            '.'.join([str(parent.meta_class.name), parent.name, full_name])
                 parent = parent.parent
                 if parent is None:
                     break
@@ -228,7 +271,11 @@ class StoreReader(reader_1cd.Reader1CD):
                     continue
                 if file_info['packed']:
                     data = utils.inflate_inmemory(data)
-                for name, data in self._unpuck_file(data, file_info['name'], meta_class):
+                for name, data in self._unpuck_file(data,
+                                                    file_info['name'],
+                                                    meta_class
+                                                    if obj == self.root_uid or file_info['name'][:36] == str_guid
+                                                    else None):
                     self._write_file(data, os.path.join(obj_path, name))
                     files.append(os.path.join(obj_path, name))
 
@@ -238,6 +285,8 @@ class StoreReader(reader_1cd.Reader1CD):
     def read(self):
         super(StoreReader, self).read()
         self.format_83 = 'DATAHASH' in self.get_table_info('HISTORY').fields_indexes
+        for row in self.read_table_by_name('DEPOT'):
+            self.root_uid = row.by_name('ROOTOBJID')
         if self.format_83:
             self.depot83_files_reader = Depot83Reader(os.path.join(os.path.dirname(self.file_name), 'data'))
 
@@ -267,61 +316,6 @@ class StoreReader(reader_1cd.Reader1CD):
 
         objects = self._get_objects_by_version(version_number)
         return self._save_files(objects, path, hierarchy)
-
-    def export_object(self, obj_guid, path, hierarchy=False):
-        self._load_classes()
-        self._read_objects()
-        objects = []
-        return self._save_files(objects, path, hierarchy)
-
-
-class Depot83Reader:
-
-    def __init__(self, path):
-        self.path = path
-        self.files = []
-        self.init()
-
-    def init(self):
-        self.files.clear()
-        ind_files = []
-        pack_files = []
-        for root, dirs, files in os.walk(os.path.join(self.path, 'pack')):
-            for file in files:
-                if file.endswith(".ind"):
-                    ind_files.append(os.path.join(root, file))
-                elif file.endswith('.pck'):
-                    pack_files.append(os.path.join(root, file))
-        for file in ind_files:
-            with open(file, 'rb') as stream:
-                sub_files = {}
-                self.files.append({
-                    'name': file[:-4] + '.pck',
-                    'files': sub_files
-                })
-                sign = unpack('4s4sI', stream.read(12))
-                count = sign[2]
-                for i in range(count):
-                    data = stream.read(28)
-                    sub_files[binascii.hexlify(data[:20]).decode()] = unpack('q', data[20:])[0]
-                    if not data:
-                        break
-                stream.close()
-
-    def get_file(self, hash_name):
-        for file in self.files:
-            if hash_name in file['files']:
-                with open(file['name'], 'rb') as stream:
-                    stream.seek(file['files'][hash_name])
-                    size = unpack('q', stream.read(8))[0]
-                    data = stream.read(size)
-                    stream.close()
-                    return data
-        source = os.path.join(os.path.join(self.path, 'objects'), hash_name[:2], hash_name[2:])
-        with open(source, 'rb') as stream:
-            data = stream.read()
-            stream.close()
-            return data
 
 
 logger = logging.getLogger('Store')
