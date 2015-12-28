@@ -40,10 +40,13 @@ class GitMng:
         # else:
         #     logger.debug('%s' % msg.decode())
         # return msg, err
-        return pr.returncode != 0
+        return pr.returncode
 
     def init(self):
-        self.__execute_cmd('git init')
+        if self.__execute_cmd('git init') != 0:
+            raise 'Не удалось инициализировать репозиторий'
+        else:
+            logger.info('Инициализирован репозиторий')
 
     def add(self):
         if self.__execute_cmd('git add -A .') != 0:

@@ -171,6 +171,8 @@ class StoreReader(reader_1cd.Reader1CD):
             name = meta_class.files[name[name.rindex('.'):]][0]
             if content_type == 'module':
                 ext = '.txt'
+            elif content_type == 'xml':
+                ext = '.xml'
             else:
                 ext = '.mxl'
         else:
@@ -186,12 +188,16 @@ class StoreReader(reader_1cd.Reader1CD):
             for file_name in cf_files:
                 if file_name == 'info':
                     continue
-                if content_type == 'form' and file_name == 'form':
+                if file_name == 'form':
                     yield 'Форма.mxl', cf_files[file_name]
-                elif content_type == 'form' and file_name == 'module':
+                elif file_name == 'module':
                     yield 'Модуль.txt', cf_files[file_name]
+                elif file_name == 'text':
+                    yield name + ext, cf_files[file_name]
+                elif file_name == 'image':
+                    yield name + '_СкомпилированныйОбраз' + ext, cf_files[file_name]
                 else:
-                    yield name + file_name + ext, cf_files[file_name]
+                    yield name + '_' + file_name + ext, cf_files[file_name]
 
         else:
             yield name + ext, data

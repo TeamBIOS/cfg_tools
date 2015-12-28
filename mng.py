@@ -38,7 +38,7 @@ class Mng:
 
     def __before_export(self):
         if not os.path.exists(os.path.join(self.local_repo, '.git')):
-            logger.error('Не найден репозиторий. Для создания репозитория используйте команду "init"')
+            raise Exception('Не найден репозиторий. Для создания репозитория используйте команду "init"')
 
         self.load_authors()
         self.read_versions()
@@ -95,12 +95,12 @@ class Mng:
         self.repo.init()
         if self.export_to_remote_repo:
             self.repo.pull()
-        logger.info('Репозиторий инициализирован')
         with open(os.path.join(self.local_repo, '.gitignore'), 'w+') as f:
             f.write('# Service files')
             f.write('authors.csv')
             f.close()
         self.load_authors()
+        logger.info('Репозиторий инициализирован')
 
     def load_authors(self):
         self.__init_reader()
