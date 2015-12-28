@@ -20,41 +20,53 @@
         <class id="4612bd75-71b7-4a5c-8cc5-2b0b65f9fa0d" type="journal"     multiple="ЖурналыДокументов"            single="ЖурналДокументов"            />
         <class id="bc587f20-35d9-11d6-a3c7-0050bae0a776" type="common"      multiple="Последовательности"           single="Последовательности"           />
         <class id="061d872a-5787-460e-95ac-ed74ea3a3e84" type="common"      multiple="Документы"                    single="Документы"                    />
-        <class id="fcd3404e-1523-48ce-9bc0-ecdb822684a1" type="common"      multiple="БизнесПроцессы"               single="БизнесПроцессы"               />
         <class id="631b75a0-29e2-11d6-a3c7-0050bae0a776" type="report"      multiple="Отчеты"                       single="Отчеты"                       />
         <class id="bf845118-327b-4682-b5c6-285d2a0eb296" type="report"      multiple="Обработки"                    single="Обработки"                    />
         <class id="36a8e346-9aaa-4af9-bdbd-83be3c177977" type="common"      multiple="НумераторыДокументов"         single="НумераторыДокументов"         />
-        <class id="3e63355c-1378-4953-be9b-1deb5fb6bec5" type="common"      multiple="Задачи"                       single="Задачи"                       />
         <class id="f6a80749-5ad7-400b-8519-39dc5dff2542" type="common"      multiple="Перечисления"                 single="Перечисления"                 />
         <class id="30d554db-541e-4f62-8970-a1c6dcfeb2bc" type="common"      multiple="ПараметрыФункциональныхОпций" single="ПараметрыФункциональныхОпций" />
-        <class id="11bdaf85-d5ad-4d91-bb24-aa0eee139052" type="common"      multiple="РегламентныеЗадания"          single="РегламентныеЗадания"          />
         <class id="37f2fa9a-b276-11d4-9435-004095e12fc7" type="sub_system"  multiple="Подсистемы"                   single="Подсистемы"                   />
         <class id="af547940-3268-434f-a3e7-e47d6d2638c3" type="common"      multiple="ФункциональныеОпции"          single="ФункциональныеОпции"          />
-        <class id="09736b02-9cac-4e3f-b4f7-d3e9576ab948" type="role"        multiple="Роли"                         single="Роли"                         />
+        <class id="09736b02-9cac-4e3f-b4f7-d3e9576ab948" type="Single"      multiple="Роли"                         single="Роли"                         />
         <class id="46b4cd97-fd13-4eaa-aba2-3bddd7699218" type="common"      multiple="ХранилищаНастроек"            single="ХранилищаНастроек"            />
         <class id="4e828da6-0f44-4b5b-b1c0-a2b3cfe7bdcc" type="common"      multiple="ПодпискиНаСобытие"            single="ПодпискиНаСобытие"            />
         <class id="c045099e-13b9-4fb6-9d50-fca00202971e" type="common"      multiple="ОпределяемыеТипы"             single="ОпределяемыеТипы"             />
-        <class id="3e5404af-6ef8-4c73-ad11-91bd2dfac4c8" type="common"      multiple="Стили"                        single="Стили"                        />
-        <class id="39bddf6a-0c3c-452b-921c-d99cfa1c2f1b" type="interface"   multiple="Интерфейсы"                   single="Интерфейсы"                   />
-        <class id="9cd510ce-abfc-11d4-9434-004095e12fc7" type="common"      multiple="Языки"                        single="Языки"                        />
         <class id="274bf899-db0e-4df6-8ab5-67bf6371ec0b" type="common"      multiple="Перерасчеты"                  single="Перерасчеты"                  />
+        <class id="11bdaf85-d5ad-4d91-bb24-aa0eee139052" type="SchedJob"    multiple="РегламентныеЗадания"          single="РегламентныеЗадания"          />
 
-        <class id="82a1b659-b220-4d94-a9bd-14d757b95a48" type="plan"        multiple="ПланыВидовХарактеристик"      single="ПланыВидовХарактеристик"      />
-        <class id="238e7e88-3c5f-48b2-8a3b-81ebbecb20ed" type="common"      multiple="ПланыСчетов"                  single="ПланСчетов"                  />
-        <class id="30b100d6-b29f-47ac-aec7-cb8ca8a54767" type="common"      multiple="ПланыВидовРасчета"            single="ПланВидовРасчета"            />
+        <class id="fcd3404e-1523-48ce-9bc0-ecdb822684a1" type="common"      multiple="БизнесПроцессы"               single="БизнесПроцессы"               />
+        <class id="3e63355c-1378-4953-be9b-1deb5fb6bec5" type="task"        multiple="Задачи"                       single="Задачи"                       />
+
+        <class id="3e5404af-6ef8-4c73-ad11-91bd2dfac4c8" type="Single"      multiple="Стили"                        single="Стили"                        />
+        <class id="39bddf6a-0c3c-452b-921c-d99cfa1c2f1b" type="Single"      multiple="Интерфейсы"                   single="Интерфейсы"                   />
+        <class id="9cd510ce-abfc-11d4-9434-004095e12fc7" type="common"      multiple="Языки"                        single="Языки"                        />
+
+        <class id="82a1b659-b220-4d94-a9bd-14d757b95a48" type="planCharact" multiple="ПланыВидовХарактеристик"      single="ПланыВидовХарактеристик"      />
+        <class id="238e7e88-3c5f-48b2-8a3b-81ebbecb20ed" type="planAcc"     multiple="ПланыСчетов"                  single="ПланСчетов"                  />
+        <class id="30b100d6-b29f-47ac-aec7-cb8ca8a54767" type="plan"        multiple="ПланыВидовРасчета"            single="ПланВидовРасчета"            />
         <class id="857c4a91-e5f4-4fac-86ec-787626f1c108" type="ExchPlan"    multiple="ПланыОбмена"                  single="ПланыОбмена"                  />
 
         <class id="13134201-f60b-11d5-a3c7-0050bae0a776" type="register"    multiple="РегистрыСведений"             single="РегистрыСведений"             />
         <class id="b64d9a40-1642-11d6-a3c7-0050bae0a776" type="register"    multiple="РегистрыНакопления"           single="РегистрыНакопления"           />
         <class id="f2de87a8-64e5-45eb-a22d-b3aedab050e7" type="register"    multiple="РегистрыРасчета"              single="РегистрыРасчета"              />
-        <class id="2deed9b8-0056-4ffe-a473-c20a6c32a0bc" type="register"    multiple="РегистрыБухгалтерии"          single="РегистрыБухгалтерии"          />
+        <class id="2deed9b8-0056-4ffe-a473-c20a6c32a0bc" type="registerAcc" multiple="РегистрыБухгалтерии"          single="РегистрыБухгалтерии"          />
 
         <class id="d26096fb-7a5d-4df9-af63-47d04771fa9b" type="wsref"       multiple="WSСсылки"                     single="WSСсылка"                      description="WS-ссылки для 8.1"/>
-        <class id="cc9df798-7c94-4616-97d2-7aa0b7bc515e" type="common"      multiple="ПакетыXDTO"                   single="ПакетXDTO"                   />
+        <class id="cc9df798-7c94-4616-97d2-7aa0b7bc515e" type="packXDTO"    multiple="ПакетыXDTO"                   single="ПакетXDTO"                   />
         <class id="8657032e-7740-4e1d-a3ba-5dd6e8afb78f" type="common"      multiple="WebСервисы"                   single="WebСервис"                   />
         <class id="0fffc09c-8f4c-47cc-b41c-8d5c5a221d79" type="common"      multiple="HttpСервисы"                  single="HttpСервис"                  />
 
     </metadata>
+    <type name="task">
+        <file id=".6"  content_type = "module" name="МодульОбъекта"/>
+        <file id=".5"  content_type = "help"   name="Справка"/>
+    </type>
+    <type name="Single">
+        <file id=".0"  content_type = "mxl" name="Описание"/>
+    </type>
+    <type name="SchedJob">
+        <file id=".0"  content_type = "mxl" name="Рассписание"/>
+    </type>
     <type name="ExchPlan">
         <file id=".2" content_type = "module" name="МодульОбъекта"/>
         <file id=".0" content_type = "help"   name="Справка"/>
@@ -63,8 +75,11 @@
     <type name="wsref">
         <file id=".0" content_type = "xml" name="WSDL"/>
     </type>
+    <type name="packXDTO">
+        <file id=".0" content_type = "xml" name="Описание"/>
+    </type>
     <type name="cfg">
-        <file id=".0" content_type = "module" name="МодульОбчногоПриложения"/>
+        <file id=".0" content_type = "module" name="МодульОбычногоПриложения"/>
         <file id=".1" content_type = "base64" name="Логотип"/>
         <file id=".2" content_type = "base64" name="Заставка"/>
         <file id=".3" content_type = "help"   name="Справка"/>
@@ -76,6 +91,11 @@
         <file id=".a" content_type = "mxl"    name="КомандныйИнтерфейс"/>
         <file id=".b" content_type = "mxl"    name="ИнтерфейсКлиентскогоПриложения"/>
         <file id=".c" content_type = "base64" name="КартинкаОсновногоРаздела"/>
+    </type>
+    <type name="registerAcc">
+        <file id=".5" content_type = "help"   name="Справка"/>
+        <file id=".6" content_type = "module" name="МодульНабораЗаписей"/>
+        <!--<file id=".2" content_type = "module" name="МодульМенеджера"/>-->
     </type>
     <type name="register">
         <file id=".0" content_type = "help"   name="Справка"/>
@@ -109,10 +129,22 @@
         <file id=".1"  content_type = "help"   name="Справка"/>
         <file id=".1c" content_type = "module" name="Предопределенные"/>
     </type>
-    <type name="plan">
+    <type name="planAcc">
+        <file id=".5"  content_type = "help"   name="Справка"/>
+        <file id=".9"  content_type = "mxl"    name="Предопределенные"/>
+        <file id=".14" content_type = "module" name="МодульОбъекта"/>
+        <file id=".15" content_type = "module" name="МодульМенеджера"/>
+    </type>
+    <type name="planCharact">
         <file id=".5"  content_type = "help"   name="Справка"/>
         <file id=".7"  content_type = "mxl"    name="Предопределенные"/>
         <file id=".15" content_type = "module" name="МодульОбъекта"/>
+    </type>
+    <type name="plan">
+        <file id=".5"  content_type = "help"   name="Справка"/>
+        <file id=".7"  content_type = "mxl"    name="Предопределенные"/>
+        <file id=".14" content_type = "module" name="МодульОбъекта"/>
+        <file id=".15" content_type = "module" name="МодульМенеджера"/>
     </type>
     <type name="form">
         <file id=".0" content_type = "form"   name="Форма"/>
@@ -124,12 +156,6 @@
     </type>
     <type name="maket">
         <file id=".0" content_type = "mxl"    name="Макет"/>
-    </type>
-    <type name="role">
-        <file id=".0" content_type = "mxl"    name="Роль"/>
-    </type>
-    <type name="interface">
-        <file id=".0" content_type = "mxl"    name="Интерфейс"/>
     </type>
     <class id="3daea016-69b7-4ed4-9453-127911372fe6" multiple="Макеты"                       single="Макет"                          type="maket"/>
     <class id="11372fe6-1279-9453-16a0-ae3db769d44e" multiple="_________________ОбщиеМакеты" single="__________________ОбщийМакет"   type="maket"/>
