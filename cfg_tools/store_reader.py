@@ -1,8 +1,9 @@
+# -*- coding: utf-8 -*-
 import cfg_tools.reader_1cd as reader_1cd
 import os
 from cfg_tools import utils
 import xml.etree.ElementTree as etree
-from cfg_tools.common import ref
+from cfg_tools.common import Ref
 from cfg_tools import reader_cf
 import io
 import logging
@@ -14,7 +15,7 @@ import binascii
 logger = None
 
 
-class User(common.ref):
+class User(common.Ref):
 
     def __init__(self, data, name, email=None):
         super(User, self).__init__(data, name)
@@ -22,7 +23,7 @@ class User(common.ref):
         self.git_name = self.name
 
 
-class MetaObject(common.ref):
+class MetaObject(common.Ref):
 
     def __init__(self, data):
         super(MetaObject, self).__init__(data, None)
@@ -70,12 +71,12 @@ class StoreReader(reader_1cd.Reader1CD):
     def _set_parents(self):
         if self.root_uid is None:
             for obj in self.objects_info.values():
-                if obj.parent == common.guid.EMPTY:
+                if obj.parent == common.Guid.EMPTY:
                     self.root_uid = obj
                     break
         for obj in self.objects_info.values():
-            if isinstance(obj.parent, common.guid) and \
-               obj.parent != common.guid.EMPTY and \
+            if isinstance(obj.parent, common.Guid) and \
+               obj.parent != common.Guid.EMPTY and \
                obj.parent != self.root_uid and \
                obj.parent in self.objects_info:
                 obj.parent = self.objects_info[obj.parent]
@@ -154,7 +155,7 @@ class StoreReader(reader_1cd.Reader1CD):
         }
         self.meta_classes = {}
         for cls in tree.getiterator('class'):
-            meta_class = ref(
+            meta_class = Ref(
                 utils.guid_to_bytes(cls.attrib['id']),
                 cls.attrib['single'])
             meta_class.type = cls.attrib['type'] if 'type' in cls.attrib else None

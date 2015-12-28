@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from cfg_tools import store_reader as store_reader
 from git_mng import GitMng
 import logging
@@ -7,51 +8,53 @@ import os
 
 
 class Mng:
-
+    """
+    Управление процессом выгрузки версий и помещением в GIT
+    """
     push_step = 0
 
     @staticmethod
     def init_log(log_level, file_name=None):
+        """
+        Выполняет инициализацию логера, необходимо выполнить перед первым выводом в лог
+        :param int log_level: Уровень вывод лога
+        :param str file_name: Имя файла вывода. если не указа будет выводиться в консоль
+        :return:
+        """
         logging.basicConfig(level=log_level,
                             format='%(asctime)-15s %(levelname)7s: %(name)5s: %(message)s',
                             handlers=[logging.StreamHandler()
                                       if file_name is None else
                                       logging.FileHandler(file_name, encoding='utf-8')])
 
-    def __init__(self, config_file=None, path=None, store_path=None, remote_url=None):
+    def __init__(self, config_file=None, store_path=None, local_path=None, remote_url=None):
+        """
+        Инициализация
+        :param str config_file: Имя файла конфигурации, если указан другие параметры игнорируются
+        :param str store_path: путь к файлу хранилища
+        :param str local_path: путь к каталогу локального репозитория
+        :param str remote_url: адрес удаленного репозитория
+        :return:
+        """
         self.local_repo = None
         self.store_path = None
         self.remote_repo_url = None
         if config_file:
             self.__load_config(config_file)
         else:
-            self.local_repo = path
+            self.local_repo = local_path
             self.store_path = store_path
             self.remote_repo_url = remote_url
         self.export_to_remote_repo = True if self.remote_repo_url else False
         self.reader = None
         self.repo = GitMng(self.local_repo, self.remote_repo_url)
 
-    def __init_reader(self):
-        if self.reader is None:
-            self.reader = store_reader.StoreReader(self.store_path)
-
-    def __before_export(self):
-        if not os.path.exists(os.path.join(self.local_repo, '.git')):
-            raise Exception('Не найден репозиторий. Для создания репозитория используйте команду "init"')
-
-        self.load_authors()
-        self.read_versions()
-
-    def __commit(self, version_info):
-        self.repo.add()
-        self.repo.commit(version=version_info['verion'],
-                         msg=version_info['comment'] if version_info['comment'] is not None else '<no comment>',
-                         author=version_info['user'].git_name,
-                         email=version_info['user'].email,
-                         date=version_info['date'])
-
     def __load_config(self, file_name):
+        """
+        Загрузка настройки выгрузки
+        :param file_name: Имя файла настройки
+        :return:
+        """
         config = configparser.ConfigParser()
         config.read(file_name, 'utf-8')
         for sect_name in config.sections():
@@ -71,15 +74,62 @@ class Mng:
                     self.remote_repo_url = section['remote_repo']
         logger.info('Загружены настройки')
 
+    def __init_reader(self):
+        """
+        инициалиция ридера хранилища
+        :return:
+        """
+        if self.reader is None:
+            self.reader = store_reader.StoreReader(self.store_path)
+
+    def __before_export(self):
+        """
+        Вызывается перед выгрузкой версий
+        :return:
+        """
+        if not os.path.exists(os.path.join(self.local_repo, '.git')):
+            raise Exception('Не найден репозиторий. Для создания репозитория используйте команду "init"')
+
+        self.load_authors()
+        self.read_versions()
+
+    def __commit(self, version_info):
+        """
+        Выполняет запись изменений в репозиторий
+        :param dict version_info: Информация о версии(номер, пользователь, комментарий...)
+        :return:
+        """
+        self.repo.add()
+        self.repo.commit(version=version_info['verion'],
+                         msg=version_info['comment'] if version_info['comment'] is not None else '<no comment>',
+                         author=version_info['user'].git_name,
+                         email=version_info['user'].email,
+                         date=version_info['date'])
+
     def __save_exported_version_info(self, version):
+        """
+        Сохранение информации о выгруженной версии в файл в каталоге репозитория
+        :param int version: Номер версии
+        :return:
+        """
         with open(self.__last_version_file(), 'w') as f:
             f.write(str(version))
             f.close()
 
     def __last_version_file(self):
+        """
+        Получение имени файла сохранения версии
+        :return: Имя файла версии
+        """
         return os.path.join(self.local_repo, 'last_version.txt')
 
     def __export_version(self, version, commit=True):
+        """
+        Выгружает в файлы версию по номеру
+        :param int version: Номер версии
+        :param commit: Помещать в репозиторий
+        :return:
+        """
         version_info = self.reader.versions[version]
         logger.info('================================== Export version: %s' % version)
         logger.debug(str(version_info))
@@ -89,6 +139,11 @@ class Mng:
             self.__commit(version_info)
 
     def init_repo(self, check_exist=True):
+        """
+        инициализация репозитория и создание служебных файлов
+        :param check_exist: Проверка на существование репозитория
+        :return:
+        """
         if check_exist and os.path.exists(os.path.join(self.local_repo, '.git')):
             logger.info('Репозиторий уже существует, инициализация не выполнена')
             return
@@ -103,6 +158,11 @@ class Mng:
         logger.info('Репозиторий инициализирован')
 
     def load_authors(self):
+        """
+        Загрузка авторов из файла-соответствия
+        Если найдены пользователи отсутствующие в файле, они будут дописаны в файл
+        :return:
+        """
         self.__init_reader()
         authors = {}
         file_name = os.path.join(self.local_repo, 'authors.csv')
@@ -132,15 +192,32 @@ class Mng:
                 f.close()
 
     def read_versions(self):
+        """
+        Считывает версии хранилища
+        :return:
+        """
         self.__init_reader()
         self.reader.read_versions()
         return self.reader.versions
 
     def export_version(self, version, commit=True):
+        """
+        Выгрузка версии хранилища по номеру2
+        :param int version: Номер версии
+        :param commit: Помещать в репозиторий
+        :return:
+        """
         self.__before_export()
         self.__export_version(version, commit)
 
     def export_versions(self, start_version, last_version=9999999, commit=True):
+        """
+        Экспорт интервала версий(включительно), по окончании делается push
+        :param int start_version: начальная версия
+        :param int last_version: Последная версия
+        :param commit: Помещать в репозиторий
+        :return:
+        """
         self.__before_export()
         count = 0
         for v in sorted(self.reader.versions):
@@ -151,10 +228,16 @@ class Mng:
                     count = 0
                     if self.export_to_remote_repo:
                         self.repo.push()
-        if self.export_to_remote_repo:
+        if commit and self.export_to_remote_repo:
             self.repo.push()
 
-    def export_new(self):
+    def export_new(self, commit=True):
+        """
+        Выгрузка новых версий.
+        Выполняется pull. Считывается номер последней выгруженной версии. Выгружаются версии новее её
+        :param commit: Помещать в репозиторий
+        :return:
+        """
         logger.info('============================================')
         logger.info('==== Выгрузка новых версий в GIT')
         logger.info('============================================\n')
@@ -172,7 +255,7 @@ class Mng:
         start_version += 1
         self.__before_export()
         logger.info('Последная версия в хранилище: %s' % max(self.reader.versions))
-        self.export_versions(start_version)
+        self.export_versions(start_version, commit=commit)
         return True
 
 

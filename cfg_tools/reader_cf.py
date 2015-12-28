@@ -1,4 +1,3 @@
-from cfg_tools.common import FileBlockReader
 from struct import unpack
 import datetime
 import logging
@@ -9,7 +8,9 @@ bytes7fffffff = b'\xff\xff\xff\x7f'
 
 
 class ReaderCF:
-
+    """
+    Читает содержимое cf, epf, epr файлов-контейнеров
+    """
     def __init__(self, stream, packed=True):
         self.stream = stream
         self.packed = packed
@@ -17,6 +18,11 @@ class ReaderCF:
 
     @staticmethod
     def __read_item_header(stream):
+        """
+        Считывает заголовок блока
+        :param stream: Поток чтения
+        :return dict: Описание блока
+        """
         data = stream.read(31)
 
         return {
@@ -27,6 +33,11 @@ class ReaderCF:
 
     @staticmethod
     def read_container(stream):
+        """
+        Читает данные(объекты) контейнера из потока
+        :param stream: Поток чтения
+        :return dict: Имя документа - данные документа
+        """
         stream.seek(16)
         item_header = ReaderCF.__read_item_header(stream)
         addresses = []
@@ -47,7 +58,18 @@ class ReaderCF:
             data = stream.read(item_header['data_len'])
             files[name] = data
         return files
-        # logger.debug('files: %s' % list(self.files.keys()))
+
+    @staticmethod
+    def read_file(file_name):
+        """
+        Читает данные(объекты) контейнера из файла
+        :param file_name: Имя файла контейнера
+        :return dict: Имя документа - данные документа
+        """
+        with open(file_name, 'rb') as stream:
+            data = ReaderCF.read_container(stream)
+            stream.close()
+            return data
 
     def read(self):
         self.files = self.read_container(self.stream)

@@ -4,7 +4,7 @@ import logging
 import re
 from datetime import datetime
 import cfg_tools.utils as utils
-from cfg_tools.common import FileBlockReader, BlockReader, guid
+from cfg_tools.common import BlockReader, Guid
 import os
 
 logger = None
@@ -33,6 +33,9 @@ def parse_table_info(info):
     return table_desc
 
 
+"""
+Функции определения физического размера(байт) типа, x - логический размер типа
+"""
 types_sz = {
     'GUID': lambda x: 16,
     'B': lambda x: x,
@@ -46,8 +49,12 @@ types_sz = {
     'DT': lambda x: 7,
 }
 
+
+"""
+Функции преобразования значений из двоичных, f - параметры типа, x - дв. данные значения
+"""
 types_fun = {
-    'GUID': lambda f, x:  guid(x),
+    'GUID': lambda f, x:  Guid(x),
     'B': lambda f, x: utils.b2s(x),
     'L': lambda f, x: x[0] == 1,
     'N': lambda f, x: utils.bytes_to_int(f, x),
@@ -57,12 +64,13 @@ types_fun = {
     'NT': lambda f, x: utils.read_struct(x, '2I'),
     'I': lambda f, x: utils.read_struct(x, '2I'),
     'DT': lambda f, x: utils.b2s(x) if x[4:6] == b'\x00\x00' else datetime.strptime(utils.b2s(x), '%Y%m%d%H%M%S')
-
 }
 
 
 class FieldDesc:
-
+    """
+    Описание поля таблицы
+    """
     def __init__(self, **kwargs):
         self.name = kwargs.pop('name')
         self.type = kwargs.pop('type')
@@ -74,6 +82,10 @@ class FieldDesc:
         self.byte_size = 0
 
     def print_info(self):
+        """
+        Вывод описания поля в консоль
+        :return:
+        """
         print('          name:', self.name)
         print('          type:', self.type)
         print('      nullable:', self.nullable)
@@ -85,7 +97,9 @@ class FieldDesc:
 
 
 class TableDesc:
-
+    """
+    Описание таблицы 1с
+    """
     def __init__(self, **kwargs):
         self.text           = kwargs.pop('text')
         self.name           = kwargs.pop('name')
@@ -106,6 +120,10 @@ class TableDesc:
         self.blob_reader = BlobReader(self.blob_addr) if self.blob_addr else None
 
     def init(self):
+        """
+        Инициализация, определение размеров полей, записи, порядка, функций преобразования
+        :return:
+        """
         self.row_size = 1
         self.blob_fields = []
 
@@ -135,6 +153,10 @@ class TableDesc:
             self.row_size += field.byte_size
 
     def print_info(self):
+        """
+        Вывод информации о таблице в консоль
+        :return:
+        """
         print('          name:', self.name)
         print(' blob contains:', self.blob_addr != 0)
         print('index contains:', self.index_addr != 0)
@@ -144,22 +166,44 @@ class TableDesc:
         print('    rows_count:', self.rows_count)
 
     def index_by_field_name(self, field_name):
+        """
+        Получение индекса поля по имени
+        :param str field_name: Имя поля
+        :return:
+        """
         return self.fields_indexes[field_name.upper()]
 
-    def init_row(self):
+    def new_row(self):
+        """
+        Создание новой строки таблицы
+        :return: Новую не добавленную строку
+        """
         return Row(self)
 
 
 class Row(list):
-
+    """
+    Описание строки таблицы
+    Список с доступом по именам полей и возможностью чтения BLOB значений
+    """
     def __init__(self, table):
         self.table = table
         self.extend([None] * len(table.fields))
 
     def by_name(self, name):
+        """
+        Получение значения по имени поля. Не производит чтение BLOB полей
+        :param str name: Имя поля
+        :return: Значение поля
+        """
         return self[self.table.index_by_field_name(name)]
 
     def get_blob(self, name):
+        """
+        Получение значения BLOB поля
+        :param str name: Имя поля
+        :return: Значение поля
+        """
         val = self.by_name(name)
         if isinstance(val, tuple):
             val = self.table.blob_reader.read_obj(val)
@@ -168,17 +212,29 @@ class Row(list):
 
 
 class BlobReader(BlockReader):
-
+    """
+    Чтение BLOB-записей таблицы
+    """
     CHUNK_SIZE = 256
     reader = None
 
     def __init__(self, info_address):
+        """
+        Инициализация ридера
+        :param info_address: Адрес блока описания объекта BLOB-записей
+        :return:
+        """
         self.cache = {}
         self.ratio = self.reader.CHUNK_SIZE // self.CHUNK_SIZE
         self.blob_table_addr = info_address
         self.address = self.reader.get_data_address(self.blob_table_addr)[1]
 
     def read_block(self, addr):
+        """
+        Чтение блока по адресу(номеру)
+        :param long addr: адрес(номер блока)
+        :return:
+        """
         block_num = addr // self.ratio
         if block_num not in self.cache:
             data = self.reader.read_block(self.address[block_num])
@@ -190,38 +246,138 @@ class BlobReader(BlockReader):
         offset = (addr % self.ratio) * self.CHUNK_SIZE
         return data[offset: offset + self.CHUNK_SIZE]
 
-    def read_obj(self, blob_info):
-        if blob_info and blob_info[0]:
+    def read_obj_iter(self, blob_info):
+        if blob_info is not None and blob_info[0]:
+            yield blob_info[1]
             lost = blob_info[1]
             pos = blob_info[0]
-            val = bytearray(b'\x00' * lost)
-            offset = 0
             while 1:
                 readed = min(lost, 250)
 
                 block = self.read_block(pos)
-                val[offset: offset + readed] = block[6: 6 + readed]
+                yield block[6: 6 + readed]
                 lost -= readed
-                offset += readed
                 pos = unpack('I', block[:4])[0]
                 if pos == 0:
                     break
-            return val
+
+
+class FileBlockReader(BlockReader):
+    """
+    Блочный ридер для файлов 1CD
+    """
+    PAGE_SIZE = 4096
+
+    def __init__(self, db_file):
+        """
+        :param db_file: Поток чтения
+        :return:
+        """
+        self.db_file = db_file
+
+    def _set_position(self, addr):
+        self.db_file.seek(self.PAGE_SIZE * addr)
+
+    def _read(self, n=None):
+        return self.db_file.read(self.PAGE_SIZE if n is None else n)
+
+    def get_data_address(self, info_address):
+        """
+        Получает список адресов данных объекта
+        :param int info_address: адрес заголовка объекта
+        :return tuple(int, list): список адресов данных
+        """
+        data = self.read_block(info_address)
+        obj_size = unpack('i', data[8:12])[0]
+        if obj_size == 0:
+            return 0, []
+        block_count = (obj_size - 1) // 0x3ff000 + 1
+        blocks_numbers = unpack(str(block_count) + 'i', data[24: 24 + block_count * 4])
+
+        if obj_size == 0 or blocks_numbers is None:
+            return obj_size, []
+        address = []
+        for addr in blocks_numbers:
+            block_info = self.read_block(addr)
+
+            sub_blocks_count = unpack('i', block_info[:4])[0]
+            address.extend(unpack(str(sub_blocks_count) + 'i', block_info[4: 4 + sub_blocks_count * 4]))
+        return obj_size, address
+
+    def read_obj_iter(self, obj_addr, part_size=PAGE_SIZE):
+        """
+        Итератор чтения объекта
+        :param obj_addr: Адрес описания объекта
+        :param part_size: Размер блока чтения(возвразаемого итератором)
+        :return:
+        """
+        obj_size, address = self.get_data_address(obj_addr)
+        yield obj_size
+        if obj_size == 0:
+            return
+        lost = obj_size
+        buff_pos = 0
+        buff_lost = 0
+
+        address_iter = iter(address)
+
+        if part_size == self.PAGE_SIZE:
+            for addr in address_iter:
+                if not addr:
+                    return
+                self._set_position(addr)
+                readed = min(lost, self.PAGE_SIZE)
+                lost -= readed
+                buff = self._read(readed)
+                yield buff
         else:
-            return None
+            while 1:
+                if buff_lost < part_size:
+                    try:
+                        addr = next(address_iter)
+                    except StopIteration:
+                        break
+                    self.db_file.seek(self.PAGE_SIZE * addr)
+                    readed = min(lost, self.PAGE_SIZE)
+                    lost -= readed
+                    if buff_lost:
+                        buff = buff[buff_pos:] + self.db_file.read(readed)
+                    else:
+                        buff = self.db_file.read(readed)
+                    buff_pos = 0
+                    buff_lost = len(buff)
+
+                yield buff[buff_pos: buff_pos + part_size]
+                buff_pos += part_size
+                buff_lost -= part_size
 
 
 class Reader1CD:
-
+    """
+    Выполняет чтение таблиц db 1CD
+    """
     __instance = None
 
     def __new__(cls, file_name):
+        """
+        Реализация сингтона
+        :param file_name: Имя файла файла 1CD
+        :return: Объект ридера
+        """
         if Reader1CD.__instance is None:
             Reader1CD.__instance = object.__new__(cls)
             Reader1CD.__instance.__init__(file_name)
+        elif Reader1CD.__instance.file_name != file_name:
+            raise Exception('Для открытия другого файла закроте первый')
+
         return Reader1CD.__instance
 
     def __init__(self, file_name):
+        """
+        Инициализация объекта
+        :param file_name: Имя файла файла 1CD
+        :return:
+        """
         self.file_name = file_name
         self.db_file = None
         self.tables = None
@@ -232,11 +388,17 @@ class Reader1CD:
         BlobReader.reader = self.reader
 
     def __del__(self):
-        if self.db_file:
-            self.db_file.close()
-            self.db_file = None
+        """
+        Диструктор, закрываем файл если он открыт
+        :return:
+        """
+        self.close_file()
 
     def __open_reader(self):
+        """
+        Выполняет открытие файла
+        :return:
+        """
         if not os.path.exists(self.file_name):
             raise Exception('Файл хранилища не существует')
 
@@ -244,6 +406,12 @@ class Reader1CD:
         self.reader = FileBlockReader(self.db_file)
 
     def __read_root_object(self, obj_addr):
+        """
+        Читает основной объект db
+        Содержащий параметры db и описание таблиц
+        :param obj_addr: Адрес блока объекта
+        :return:
+        """
         obj_data = self.reader.read_obj(obj_addr)
         root_info = utils.read_struct(obj_data, '32si')
         lang = root_info[0].rstrip(b'\x00').decode()
@@ -257,7 +425,22 @@ class Reader1CD:
             table.init()
         return tables, lang
 
+    def close_file(self):
+        """
+        Закрывает файл
+        :return:
+        """
+        if self.db_file:
+            self.db_file.close()
+            self.db_file = None
+        self.file_name = None
+
     def read(self):
+        """
+        Считывает мета-описание db
+        Содержащее параметры db и описание таблиц
+        :return:
+        """
         block_num = 0
         buffer = self.reader.read_block(0)
         while buffer:
@@ -280,24 +463,26 @@ class Reader1CD:
         logger.debug('base length: %s' % self.baseLength)
         logger.debug('tables count: %s' % len(self.tables))
 
-    def print_tables(self, print_fields=1):
-        for table in self.tables:
-            print(table.name)
-            if print_fields:
-                for field in table.fields:
-                    print('\t%s (%s)' % (field.name, field.type))
-
-    def read_tables_size(self):
-        for table_desc in self.tables.values():
-            gen = self.reader.read_obj_iter(obj_addr=table_desc.data_addr, part_size=table_desc.row_size)
-            self.__set_table_size(table_desc, gen)
-
     @staticmethod
     def __set_table_size(table_desc, gen):
+        """
+        Сохраняет размер таблицы в ее описании
+        :param table_desc: Описание таблицы
+        :param gen: Итератор - блочный чтец данных
+        :return:
+        """
         table_desc.table_size = next(gen)
         table_desc.rows_count = table_desc.table_size//table_desc.row_size
 
-    def read_table_by_name(self, table, read_blob=False, filter_function=None, push_headers=True):
+    def read_table_by_name(self, table, read_blob=False, filter_function=None, push_headers=False):
+        """
+        Считывает таблицы из файла
+        :param str table: Имя таблицы
+        :param read_blob: Считывать BLOB-записи
+        :param filter_function: Функция фильтрация возвращаемых записей, Выполняется до чтения BLOB
+        :param push_headers: Возвращать заголовк таблицы(True - в первой итерации вернется список полей таблицы)
+        :return:
+        """
         logger.debug('Read table: %s' % table.upper())
         table_desc = self.get_table_info(table)
 
@@ -312,7 +497,7 @@ class Reader1CD:
         offset = 0
         blob_fields = table_desc.blob_fields
         for row_data in gen:
-            values = table_desc.init_row()
+            values = table_desc.new_row()
             if row_data[0] == 1:
                 continue
             i = 0
@@ -332,42 +517,18 @@ class Reader1CD:
                 if read_blob:  # BLOB
                     for i in blob_fields:
                         val = values[i]
-                        val = self.__read_blob(table_desc, val)
+                        val = table_desc.blob_reader.read_obj(val)
                         if val and table_desc.fields[i].type == 'NT':
                             val = val.decode('utf-16')
                         values[i] = val
                 yield values
 
-    def __read_blob(self, table_desc, blob_info):
-        return table_desc.blob_reader.read_obj(blob_info)
-        if table_desc.blob_data is None:
-            table_desc.blob_data = self.reader.read_obj(table_desc.blob_addr)
-
-        if blob_info and blob_info[0]:
-            lost = blob_info[1]
-            pos = blob_info[0]
-            val = bytearray(b'\x00' * lost)
-            offset = 0
-            while 1:
-                pos *= 256
-                readed = min(lost, 250)
-                val[offset: offset + readed] = table_desc.blob_data[pos + 6: pos + 6 + readed]
-                lost -= readed
-                offset += readed
-                pos = unpack('I', table_desc.blob_data[pos: pos + 4])[0]
-                if pos == 0:
-                    break
-            return val
-        else:
-            return None
-
-    def read_blob(self, table, blob_info):
-        table_desc = self.get_table_info(table)
-        if table_desc is None:
-            raise Exception('Не найдена таблица с именем "%s"' % table)
-        return self.__read_blob(table_desc, blob_info)
-
     def get_table_info(self, table_name):
+        """
+        Ищет описание таблицы по имени
+        :param str table_name: Имя таблицы
+        :return TableDesc:
+        """
         table_desc = self.tables[table_name.upper()]
 
         if table_desc is None:
