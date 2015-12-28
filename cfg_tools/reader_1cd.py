@@ -105,7 +105,7 @@ class TableDesc:
 
         self.blob_reader = BlobReader(self.blob_addr) if self.blob_addr else None
 
-    def init_table(self):
+    def init(self):
         self.row_size = 1
         self.blob_fields = []
 
@@ -122,7 +122,7 @@ class TableDesc:
         ind = 0
         self.fields_indexes = {}
         for field in self.fields:
-            self.fields_indexes[field.name.lower()] = ind
+            self.fields_indexes[field.name.upper()] = ind
             if field.type == 'NT' or field.type == 'I':
                 self.blob_fields.append(ind)
             ind += 1
@@ -144,7 +144,7 @@ class TableDesc:
         print('    rows_count:', self.rows_count)
 
     def index_by_field_name(self, field_name):
-        return self.fields_indexes[field_name.lower()]
+        return self.fields_indexes[field_name.upper()]
 
     def init_row(self):
         return Row(self)
@@ -158,6 +158,13 @@ class Row(list):
 
     def by_name(self, name):
         return self[self.table.index_by_field_name(name)]
+
+    def get_blob(self, name):
+        val = self.by_name(name)
+        if isinstance(val, tuple):
+            val = self.table.blob_reader.read_obj(val)
+            self[self.table.index_by_field_name(name)] = val
+        return val
 
 
 class BlobReader(BlockReader):
@@ -245,6 +252,9 @@ class Reader1CD:
         tables = []
         for addr in address_tables_info:
             tables.append(parse_table_info(self.reader.read_obj(addr).decode('UTF-16')))
+
+        for table in tables:
+            table.init()
         return tables, lang
 
     def read(self):
@@ -261,7 +271,7 @@ class Reader1CD:
                     pass
                 else:
                     tables, self.lang = self.__read_root_object(block_num)
-                    self.tables = {table.name.lower(): table for table in tables}
+                    self.tables = {table.name.upper(): table for table in tables}
                     break
             block_num += 1
             buffer = self.reader.read_block(block_num)
@@ -279,7 +289,6 @@ class Reader1CD:
 
     def read_tables_size(self):
         for table_desc in self.tables.values():
-            table_desc.init_table()
             gen = self.reader.read_obj_iter(obj_addr=table_desc.data_addr, part_size=table_desc.row_size)
             self.__set_table_size(table_desc, gen)
 
@@ -291,7 +300,7 @@ class Reader1CD:
     def read_table_by_name(self, table, read_blob=False, filter_function=None, push_headers=True):
         logger.debug('Read table: %s' % table.upper())
         table_desc = self.get_table_info(table)
-        table_desc.init_table()
+
         gen = self.reader.read_obj_iter(obj_addr=table_desc.data_addr, part_size=table_desc.row_size)
 
         self.__set_table_size(table_desc, gen)
@@ -353,18 +362,19 @@ class Reader1CD:
             return None
 
     def read_blob(self, table, blob_info):
-        table_desc = self.get_table_info(table.lower())
+        table_desc = self.get_table_info(table)
         if table_desc is None:
             raise Exception('Не найдена таблица с именем "%s"' % table)
         return self.__read_blob(table_desc, blob_info)
 
     def get_table_info(self, table_name):
-        table_desc = self.tables[table_name.lower()]
+        table_desc = self.tables[table_name.upper()]
 
         if table_desc is None:
             raise Exception('Не найдена таблица с именем "%s"' % table_name)
         else:
             return table_desc
+
 
 logger = logging.getLogger('1CD')
 

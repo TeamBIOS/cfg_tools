@@ -22,13 +22,13 @@ class Mng:
         self.local_repo = None
         self.store_path = None
         self.remote_repo_url = None
-
         if config_file:
             self.__load_config(config_file)
         else:
             self.local_repo = path
             self.store_path = store_path
             self.remote_repo_url = remote_url
+        self.export_to_remote_repo = True if self.remote_repo_url else False
         self.reader = None
         self.repo = GitMng(self.local_repo, self.remote_repo_url)
 
@@ -37,6 +37,9 @@ class Mng:
             self.reader = store_reader.StoreReader(self.store_path)
 
     def __before_export(self):
+        if not os.path.exists(os.path.join(self.local_repo, '.git')):
+            logger.error('Не найден репозиторий. Для создания репозитория используйте команду "init"')
+
         self.load_authors()
         self.read_versions()
 
@@ -90,7 +93,8 @@ class Mng:
             logger.info('Репозиторий уже существует, инициализация не выполнена')
             return
         self.repo.init()
-        self.repo.pull()
+        if self.export_to_remote_repo:
+            self.repo.pull()
         logger.info('Репозиторий инициализирован')
         with open(os.path.join(self.local_repo, '.gitignore'), 'w+') as f:
             f.write('# Service files')
@@ -145,15 +149,17 @@ class Mng:
                 count += 1
                 if self.push_step and count == self.push_step:
                     count = 0
-                    self.repo.push()
-        self.repo.push()
+                    if self.export_to_remote_repo:
+                        self.repo.push()
+        if self.export_to_remote_repo:
+            self.repo.push()
 
     def export_new(self):
         logger.info('============================================')
         logger.info('==== Выгрузка новых версий в GIT')
         logger.info('============================================\n')
-        self.repo.pull()
-        logger.info('Получены данные из центрального репозитория')
+        if self.export_to_remote_repo:
+            self.repo.pull()
         start_version = 0
         if os.path.exists(self.__last_version_file()):
             with open(self.__last_version_file(), 'r') as f:

@@ -46,7 +46,8 @@ class GitMng:
         self.__execute_cmd('git init')
 
     def add(self):
-        self.__execute_cmd('git add -A .')
+        if self.__execute_cmd('git add -A .') != 0:
+            raise Exception('Не удалось добавить измения в индекс (git add)')
 
     def commit(self, version, msg, author, email, date):
         os.environ['GIT_AUTHOR_DATE'] = date.strftime('"%Y-%m-%d %H:%M:%S"')
@@ -58,19 +59,25 @@ class GitMng:
         comment_file.write(msg)
         comment_file.close()
         logger.debug('Message %s' % msg)
-        self.__execute_cmd('git commit -a --file="%s" --author "%s <%s>"' % (comment_file.name, author, email))
+        exit_code = self.__execute_cmd('git commit -a --file="%s" --author "%s <%s>"' % (comment_file.name, author, email))
         os.unlink(comment_file.name)
+        if exit_code != 0:
+            raise Exception('Не удалось зафиксировать изменения (commit)')
 
     def push(self):
-        self.__execute_cmd('git push -u --all -v %s' % self.remote_url)
-        pass
+        self.gc()
+        logger.info('Отправка данных в центральный репозиторий')
+        if self.__execute_cmd('git push -u --all -v %s' % self.remote_url) != 0:
+            raise Exception('Не удалось отправить данные в центральный репозиторий')
 
     def pull(self):
-        self.gc()
-        self.__execute_cmd('git pull -v %s' % self.remote_url)
+        if self.__execute_cmd('git pull -v %s' % self.remote_url) != 0:
+            raise Exception('Не удалось получить данные из центрального репозитория')
+        logger.info('Получены данные из центрального репозитория')
 
     def gc(self):
-        self.__execute_cmd('git gc --auto')
+        if self.__execute_cmd('git gc --auto') != 0:
+            raise Exception('Не удалось выполнить сборку мусора')
 
 
 logger = logging.getLogger('GIT')
