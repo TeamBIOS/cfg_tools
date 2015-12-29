@@ -11,6 +11,10 @@ class Guid:
     """
     EMPTY = None
 
+    @staticmethod
+    def from_string(guid_str):
+        return Guid(utils.guid_to_bytes(guid_str))
+
     def __init__(self, data):
         self.data = data
 

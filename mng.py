@@ -124,21 +124,6 @@ class Mng:
         """
         return os.path.join(self.local_repo, 'last_version.txt')
 
-    def __export_version(self, version, commit=True):
-        """
-        Выгружает в файлы версию по номеру
-        :param int version: Номер версии
-        :param commit: Помещать в репозиторий
-        :return:
-        """
-        version_info = self.reader.versions[version]
-        logger.info('================================== Export version: %s' % version)
-        logger.debug(str(version_info))
-        self.reader.export_version(version, self.local_repo, True)
-        self.__save_exported_version_info(version)
-        if commit:
-            self._commit(version_info)
-
     def init_repo(self, check_exist=True):
         """
         инициализация репозитория и создание служебных файлов
@@ -203,13 +188,19 @@ class Mng:
 
     def export_version(self, version, commit=True):
         """
-        Выгрузка версии хранилища по номеру2
+        Выгрузка версии хранилища по номеру
         :param int version: Номер версии
         :param commit: Помещать в репозиторий
         :return:
         """
         self.__before_export()
-        self.__export_version(version, commit)
+        version_info = self.reader.versions[version]
+        logger.info('================================== Export version: %s' % version)
+        logger.debug(str(version_info))
+        self.reader.export_version(version, self.local_repo, True)
+        self.__save_exported_version_info(version)
+        if commit:
+            self._commit(version_info)
 
     def export_versions(self, start_version, last_version=None, commit=True):
         """
@@ -228,7 +219,7 @@ class Mng:
             if commit:
                 self._commit(version_info)
             count += 1
-            if self.push_step and count == self.push_step:
+            if commit and self.push_step and count == self.push_step:
                 count = 0
                 if self.export_to_remote_repo:
                     self.repo.push()

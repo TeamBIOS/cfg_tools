@@ -169,8 +169,6 @@ class StoreReader(reader_1cd.Reader1CD):
                 continue
 
             data = row.by_name('DATAHASH') if self.format_83 else row.get_blob('EXTDATA')
-            if data is None:
-                continue
             obj_id = row.by_name('OBJID')
             if obj_id not in objects:
                 logger.error('Найден файл не принадлежащий объекту. OBJID: %s; EXTNAME: %s' %
