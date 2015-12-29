@@ -11,7 +11,6 @@ from struct import unpack
 from cfg_tools import common
 import binascii
 
-
 logger = None
 
 
@@ -187,6 +186,86 @@ class StoreReader(reader_1cd.Reader1CD):
         logger.debug('version objects (%s) %s' % (len(objects), ', '.join([item.name for item in objects.values()])))
         return [v for v in objects.values()]
 
+    def _read_objects_by_version(self, start_version, last_version=None):
+        """
+        Генератор, возвращает список объектов и файлов для каждой версии хранилища
+        :param int start_version: Начальная версия
+        :param int last_version: Последная версия
+        :return tuple(int, list): Кортеж: номер версии, объекты версии
+        """
+        history_iter = self.read_table_by_name('HISTORY',
+                                               push_headers=False)
+        externals_iter = self.read_table_by_name('EXTERNALS',
+                                                 push_headers=False,
+                                                 read_blob=False)
+
+        # move to start_version
+        history_row = None
+        external_row = None
+        for row in history_iter:
+            obj_id = row.by_name('OBJID')
+            obj = self.objects_info[obj_id]
+            obj.name = row.by_name('OBJNAME')
+            if self.format_83:
+                obj.parent = row.by_name('PARENTID')
+            if row.by_name('VERNUM') >= start_version:
+                history_row = row
+                break
+
+        for row in externals_iter:
+            if row.by_name('VERNUM') >= start_version:
+                external_row = row
+                break
+
+        current_version = start_version
+        while True:  # Основной цикл по версиям
+            objects = {}
+            # Собираем данные об выгружаемых объектах
+            while current_version == history_row.by_name('VERNUM'):
+                obj = self.objects_info[history_row.by_name('OBJID')]
+                obj.name = history_row.by_name('OBJNAME')
+                if self.format_83:
+                    obj.parent = history_row.by_name('PARENTID')
+                obj.files.clear()
+                obj.files.append({
+                    'data': history_row.by_name('DATAHASH') if self.format_83 else history_row.get_blob('OBJDATA'),
+                    'packed': history_row.by_name('DATAPACKED'),
+                    'name': 'info.txt'
+                })
+                objects[history_row.by_name('OBJID')] = obj
+                try:
+                    history_row = next(history_iter)
+                except StopIteration:
+                    history_row = None
+                    break
+            if self.format_83:
+                # Проставим свяжем родителей по uid
+                self._set_parents()
+            # Соберем данные о доп. файлах объектов(модули, справка, предопределенные и тд)
+            while current_version == external_row.by_name('VERNUM'):
+                data = external_row.by_name('DATAHASH') if self.format_83 else external_row.get_blob('EXTDATA')
+                if data is not None:
+                    obj_id = external_row.by_name('OBJID')
+                    if obj_id not in objects:
+                        logger.error('Найден файл не принадлежащий объекту. OBJID: %s; EXTNAME: %s' %
+                                     (external_row.by_name('OBJID'), external_row.by_name('EXTNAME')))
+                    assert obj_id in objects
+                    objects[obj_id].files.append(
+                        {
+                            'name': external_row.by_name('EXTNAME'),
+                            'data': data,
+                            'packed': external_row.by_name('DATAPACKED')
+                        })
+                try:
+                    external_row = next(externals_iter)
+                except StopIteration:
+                    external_row = None
+                    break
+            yield current_version, [v for v in objects.values()]
+            current_version = min(history_row.by_name('VERNUM'), external_row.by_name('VERNUM'))
+            if last_version and current_version > last_version:
+                break
+
     def _load_classes(self):
         if self.meta_classes:
             return
@@ -311,11 +390,34 @@ class StoreReader(reader_1cd.Reader1CD):
             } for row in gen}
 
     def export_version(self, version_number, path, hierarchy=False):
+        """
+        Выгрузка версии хранилища, при множественной выгрузке лучше использовать соответствующую функцию
+        :param int version_number: Номер выгружаемой версии
+        :param str path: Каталог сохранения файлов
+        :param bool hierarchy: Иерархическая выгрузка(по каталогам)
+        :return list: выгруженные файлы
+        """
         self._load_classes()
         self._read_objects()
 
         objects = self._get_objects_by_version(version_number)
         return self._save_files(objects, path, hierarchy)
+
+    def export_versions(self, path, start_version, last_version=None, hierarchy=False):
+        """
+        Оптимизированная выгрузка нескольких версий
+        :param str path: Каталог сохранения файлов
+        :param int start_version: Начальная версия хранилища(включительно)
+        :param int last_version: Последная выгружаемая версия(включительно)
+        :param bool hierarchy: Иерархическая выгрузка(по каталогам)
+        :return tuple(int, list): Кортеж: номер версии, выгруженные файлы
+        """
+        self._load_classes()
+        self._read_objects()
+        for objects in self._read_objects_by_version(start_version, last_version):
+            logger.info('Exporting version: %s' % objects[0])
+            files = self._save_files(objects[1], path, hierarchy)
+            yield objects[0], files
 
 
 logger = logging.getLogger('Store')
