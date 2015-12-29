@@ -93,13 +93,14 @@ class Mng:
         self.load_authors()
         self.read_versions()
 
-    def __commit(self, version_info):
+    def _commit(self, version_info):
         """
         Выполняет запись изменений в репозиторий
         :param dict version_info: Информация о версии(номер, пользователь, комментарий...)
         :return:
         """
         self.repo.add()
+        logging.info('Commiting version: %s' % version_info['verion'])
         self.repo.commit(version=version_info['verion'],
                          msg=version_info['comment'] if version_info['comment'] is not None else '<no comment>',
                          author=version_info['user'].git_name,
@@ -136,7 +137,7 @@ class Mng:
         self.reader.export_version(version, self.local_repo, True)
         self.__save_exported_version_info(version)
         if commit:
-            self.__commit(version_info)
+            self._commit(version_info)
 
     def init_repo(self, check_exist=True):
         """
@@ -210,7 +211,7 @@ class Mng:
         self.__before_export()
         self.__export_version(version, commit)
 
-    def export_versions(self, start_version, last_version=9999999, commit=True):
+    def export_versions(self, start_version, last_version=None, commit=True):
         """
         Экспорт интервала версий(включительно), по окончании делается push
         :param int start_version: начальная версия
@@ -220,14 +221,17 @@ class Mng:
         """
         self.__before_export()
         count = 0
-        for v in sorted(self.reader.versions):
-            if start_version <= v <= last_version:
-                self.__export_version(v, commit)
-                count += 1
-                if self.push_step and count == self.push_step:
-                    count = 0
-                    if self.export_to_remote_repo:
-                        self.repo.push()
+        for version_data in self.reader.export_versions(self.local_repo, start_version, last_version, True):
+            version = version_data[0]
+            version_info = self.reader.versions[version]
+            self.__save_exported_version_info(version)
+            if commit:
+                self._commit(version_info)
+            count += 1
+            if self.push_step and count == self.push_step:
+                count = 0
+                if self.export_to_remote_repo:
+                    self.repo.push()
         if commit and self.export_to_remote_repo:
             self.repo.push()
 
