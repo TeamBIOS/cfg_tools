@@ -43,14 +43,16 @@ class GitMng:
         return pr.returncode
 
     def init(self):
-        if self.__execute_cmd('git init') != 0:
-            raise 'Не удалось инициализировать репозиторий'
+        exit_code = self.__execute_cmd('git init')
+        if exit_code != 0:
+            raise Exception('Не удалось инициализировать репозиторий. Код возврата: %s' % exit_code)
         else:
             logger.info('Инициализирован репозиторий')
 
     def add(self):
-        if self.__execute_cmd('git add -A .') != 0:
-            raise Exception('Не удалось добавить измения в индекс (git add)')
+        exit_code = self.__execute_cmd('git add -A .')
+        if exit_code != 0:
+            raise Exception('Не удалось добавить измения в индекс (git add). Код возврата: %s' % exit_code)
 
     def commit(self, version, msg, author, email, date):
         os.environ['GIT_AUTHOR_DATE'] = date.strftime('"%Y-%m-%d %H:%M:%S"')
@@ -65,17 +67,19 @@ class GitMng:
         exit_code = self.__execute_cmd('git commit -a --file="%s" --author "%s <%s>"' % (comment_file.name, author, email))
         os.unlink(comment_file.name)
         if exit_code != 0:
-            raise Exception('Не удалось зафиксировать изменения (commit)')
+            raise Exception('Не удалось зафиксировать изменения (commit). Код возврата: %s' % exit_code)
 
     def push(self):
         self.gc()
         logger.info('Отправка данных в центральный репозиторий')
-        if self.__execute_cmd('git push -u --all -v %s' % self.remote_url) != 0:
-            raise Exception('Не удалось отправить данные в центральный репозиторий')
+        exit_code = self.__execute_cmd('git push -u --all -v %s' % self.remote_url)
+        if exit_code!= 0:
+            raise Exception('Не удалось отправить данные в центральный репозиторий. Код возврата: %s' % exit_code)
 
     def pull(self):
-        if self.__execute_cmd('git pull -v %s' % self.remote_url) != 0:
-            raise Exception('Не удалось получить данные из центрального репозитория')
+        exit_code = self.__execute_cmd('git pull -v %s' % self.remote_url)
+        if exit_code != 0:
+            raise Exception('Не удалось получить данные из центрального репозитория. Код возврата: %s' % exit_code)
         logger.info('Получены данные из центрального репозитория')
 
     def gc(self):

@@ -221,7 +221,7 @@ class StoreReader(reader_1cd.Reader1CD):
         while True:  # Основной цикл по версиям
             objects = {}
             # Собираем данные об выгружаемых объектах
-            while current_version == history_row.by_name('VERNUM'):
+            while history_row and current_version == history_row.by_name('VERNUM'):
                 obj = self.objects_info[history_row.by_name('OBJID')]
                 obj.name = history_row.by_name('OBJNAME')
                 if self.format_83:
@@ -242,7 +242,7 @@ class StoreReader(reader_1cd.Reader1CD):
                 # Проставим свяжем родителей по uid
                 self._set_parents()
             # Соберем данные о доп. файлах объектов(модули, справка, предопределенные и тд)
-            while current_version == external_row.by_name('VERNUM'):
+            while external_row and current_version == external_row.by_name('VERNUM'):
                 data = external_row.by_name('DATAHASH') if self.format_83 else external_row.get_blob('EXTDATA')
                 if data is not None:
                     obj_id = external_row.by_name('OBJID')
@@ -263,7 +263,7 @@ class StoreReader(reader_1cd.Reader1CD):
                     break
             yield current_version, [v for v in objects.values()]
             current_version = min(history_row.by_name('VERNUM'), external_row.by_name('VERNUM'))
-            if last_version and current_version > last_version:
+            if (last_version and current_version > last_version) or (history_row is None and external_row is None):
                 break
 
     def _load_classes(self):
