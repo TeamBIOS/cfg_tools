@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from ensurepip import version
+
 from cfg_tools import store_reader as store_reader
 from git_mng import GitMng
 import logging
@@ -194,6 +196,9 @@ class Mng:
         :return:
         """
         self.__before_export()
+        if version not in self.reader.versions:
+            logging.error('Версия %s не найдена' % version)
+            return False
         version_info = self.reader.versions[version]
         logger.info('================================== Export version: %s' % version)
         logger.debug(str(version_info))
