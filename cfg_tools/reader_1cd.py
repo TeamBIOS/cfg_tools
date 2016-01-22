@@ -358,21 +358,6 @@ class Reader1CD:
     """
     Выполняет чтение таблиц db 1CD
     """
-    __instance = None
-
-    def __new__(cls, file_name):
-        """
-        Реализация сингтона
-        :param file_name: Имя файла файла 1CD
-        :return: Объект ридера
-        """
-        if Reader1CD.__instance is None:
-            Reader1CD.__instance = object.__new__(cls)
-            Reader1CD.__instance.__init__(file_name)
-        elif Reader1CD.__instance.file_name != file_name:
-            raise Exception('Для открытия другого файла закроте первый')
-
-        return Reader1CD.__instance
 
     def __init__(self, file_name):
         """
