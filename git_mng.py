@@ -73,7 +73,7 @@ class GitMng:
         self.gc()
         logger.info('Отправка данных в центральный репозиторий')
         exit_code = self.__execute_cmd('git push -u --all -v %s' % self.remote_url)
-        if exit_code!= 0:
+        if exit_code != 0:
             raise Exception('Не удалось отправить данные в центральный репозиторий. Код возврата: %s' % exit_code)
 
     def pull(self):
