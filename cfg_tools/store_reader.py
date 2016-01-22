@@ -229,8 +229,9 @@ class StoreReader(reader_1cd.Reader1CD):
             if row.by_name('VERNUM') >= start_version:
                 external_row = row
                 break
-
-        current_version = start_version
+        if history_row is None or external_row is None or history_row.by_name('VERNUM') < start_version:
+            return None
+        current_version = history_row.by_name('VERNUM')
         while True:  # Основной цикл по версиям
             objects = {}
             # Собираем данные об выгружаемых объектах
