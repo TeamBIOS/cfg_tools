@@ -330,7 +330,7 @@ class FileBlockReader(BlockReader):
                 lost -= readed
                 buff = self._read(readed)
                 yield buff
-        else:
+        elif part_size < self.PAGE_SIZE:
             while 1:
                 if buff_lost < part_size:
                     try:
@@ -350,6 +350,20 @@ class FileBlockReader(BlockReader):
                 yield buff[buff_pos: buff_pos + part_size]
                 buff_pos += part_size
                 buff_lost -= part_size
+        else:
+            buf = b''
+            for addr in address_iter:
+                if not addr:
+                    return
+                self._set_position(addr)
+                readed = min(lost, self.PAGE_SIZE)
+                lost -= readed
+                buf += self._read(readed)
+                if len(buf) >= part_size:
+                    yield buf[:part_size]
+                    buf = buf[part_size:]
+            if len(buf):
+                return buf
 
 
 class Reader1CD:
