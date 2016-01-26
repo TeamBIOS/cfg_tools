@@ -63,7 +63,9 @@ types_fun = {
     'RV': lambda f, x: utils.read_struct(x, '4I'),
     'NT': lambda f, x: utils.read_struct(x, '2I'),
     'I': lambda f, x: utils.read_struct(x, '2I'),
-    'DT': lambda f, x: utils.b2s(x) if x[4:6] == b'\x00\x00' else datetime.strptime(utils.b2s(x), '%Y%m%d%H%M%S')
+    # 'DT': lambda f, x: utils.b2s(x) if x[4:6] == b'\x00\x00' else datetime.strptime(utils.b2s(x), '%Y%m%d%H%M%S')
+    # TODO Сделать корректную проверку валидности даты
+    'DT': lambda f, x: datetime.strptime(utils.b2s(x), '%Y%m%d%H%M%S')
 }
 
 
@@ -370,21 +372,6 @@ class Reader1CD:
     """
     Выполняет чтение таблиц db 1CD
     """
-    __instance = None
-
-    def __new__(cls, file_name):
-        """
-        Реализация сингтона
-        :param file_name: Имя файла файла 1CD
-        :return: Объект ридера
-        """
-        if Reader1CD.__instance is None:
-            Reader1CD.__instance = object.__new__(cls)
-            Reader1CD.__instance.__init__(file_name)
-        elif Reader1CD.__instance.file_name != file_name:
-            raise Exception('Для открытия другого файла закроте первый')
-
-        return Reader1CD.__instance
 
     def __init__(self, file_name):
         """

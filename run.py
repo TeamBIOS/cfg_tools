@@ -27,15 +27,18 @@ else:
         raise 'Файл настроек не существует'
     if command != 'init' and command != 'export':
         raise 'Неизвестная команда'
+
+success = False
 try:
     mng = Mng(config_file=config_file)
     if command == 'init':
-        mng.init_repo(True)
+        success = mng.init_repo(True)
     elif command == 'export':
-            mng.export_new()
+        success = mng.export_new()
     else:
         raise 'Неизвестная команда'
 except:
     logging.exception('Выгрузка версий')
 
 logging.info('export delay: %s sec.' % (time.time() - t1))
+sys.exit(0 if success else 1)

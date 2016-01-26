@@ -14,6 +14,18 @@ import binascii
 logger = None
 
 
+def rmdir_r(path):
+    if not os.path.exists(path):
+        return
+    for name in os.listdir(path):
+        file = os.path.join(path, name)
+        if not os.path.islink(file) and os.path.isdir(file):
+            rmdir_r(file)
+        else:
+            os.remove(file)
+    os.rmdir(path)
+
+
 class User(common.Ref):
 
     def __init__(self, data, name, email=None):
@@ -28,6 +40,7 @@ class MetaObject(common.Ref):
         super(MetaObject, self).__init__(data, None)
         self.meta_class = None
         self.parent = None
+        self.removed = False
         self.files = []
 
 
@@ -147,7 +160,7 @@ class StoreReader(reader_1cd.Reader1CD):
             obj.files.clear()
 
             objects[obj_id] = obj
-
+            obj.removed = row.by_name('REMOVED')
             obj.files.append({
                 'data': row.by_name('DATAHASH') if self.format_83 else row.get_blob('OBJDATA'),
                 'packed': row.by_name('DATAPACKED'),
@@ -168,18 +181,19 @@ class StoreReader(reader_1cd.Reader1CD):
             elif row_version != version_number:
                 continue
 
-            data = row.by_name('DATAHASH') if self.format_83 else row.get_blob('EXTDATA')
             obj_id = row.by_name('OBJID')
             if obj_id not in objects:
                 logger.error('Найден файл не принадлежащий объекту. OBJID: %s; EXTNAME: %s' %
                              (row.by_name('OBJID'), row.by_name('EXTNAME')))
-            assert obj_id in objects
-            objects[obj_id].files.append(
-                {
-                    'name': row.by_name('EXTNAME'),
-                    'data': data,
-                    'packed': row.by_name('DATAPACKED')
-                })
+            elif row.by_name('EXTVERID') == common.Guid.EMPTY:
+                logger.debug('Пропущен файл: %s' % row.by_name('EXTNAME'))
+            else:
+                objects[obj_id].files.append(
+                    {
+                        'name': row.by_name('EXTNAME'),
+                        'data': row.by_name('DATAHASH') if self.format_83 else row.get_blob('EXTDATA'),
+                        'packed': row.by_name('DATAPACKED')
+                    })
 
         logger.debug('version objects (%s) %s' % (len(objects), ', '.join([item.name for item in objects.values()])))
         return [v for v in objects.values()]
@@ -204,6 +218,7 @@ class StoreReader(reader_1cd.Reader1CD):
             obj_id = row.by_name('OBJID')
             obj = self.objects_info[obj_id]
             obj.name = row.by_name('OBJNAME')
+            obj.removed = row.by_name('REMOVED')
             if self.format_83:
                 obj.parent = row.by_name('PARENTID')
             if row.by_name('VERNUM') >= start_version:
@@ -214,21 +229,23 @@ class StoreReader(reader_1cd.Reader1CD):
             if row.by_name('VERNUM') >= start_version:
                 external_row = row
                 break
-
-        current_version = start_version
+        if history_row is None or external_row is None or history_row.by_name('VERNUM') < start_version:
+            return None
+        current_version = history_row.by_name('VERNUM')
         while True:  # Основной цикл по версиям
             objects = {}
             # Собираем данные об выгружаемых объектах
             while history_row and current_version == history_row.by_name('VERNUM'):
                 obj = self.objects_info[history_row.by_name('OBJID')]
                 obj.name = history_row.by_name('OBJNAME')
+                obj.removed = history_row.by_name('REMOVED')
                 if self.format_83:
                     obj.parent = history_row.by_name('PARENTID')
                 obj.files.clear()
                 obj.files.append({
                     'data': history_row.by_name('DATAHASH') if self.format_83 else history_row.get_blob('OBJDATA'),
                     'packed': history_row.by_name('DATAPACKED'),
-                    'name': 'info.txt'
+                    'name': 'info.txt',
                 })
                 objects[history_row.by_name('OBJID')] = obj
                 try:
@@ -241,17 +258,17 @@ class StoreReader(reader_1cd.Reader1CD):
                 self._set_parents()
             # Соберем данные о доп. файлах объектов(модули, справка, предопределенные и тд)
             while external_row and current_version == external_row.by_name('VERNUM'):
-                data = external_row.by_name('DATAHASH') if self.format_83 else external_row.get_blob('EXTDATA')
-                if data is not None:
-                    obj_id = external_row.by_name('OBJID')
-                    if obj_id not in objects:
-                        logger.error('Найден файл не принадлежащий объекту. OBJID: %s; EXTNAME: %s' %
-                                     (external_row.by_name('OBJID'), external_row.by_name('EXTNAME')))
-                    assert obj_id in objects
+                obj_id = external_row.by_name('OBJID')
+                if obj_id not in objects:
+                    logger.error('Найден файл не принадлежащий объекту. OBJID: %s; EXTNAME: %s' %
+                                 (external_row.by_name('OBJID'), external_row.by_name('EXTNAME')))
+                elif external_row.by_name('EXTVERID') == common.Guid.EMPTY:
+                    logger.debug('Пропущен файл: %s. Инфо: %s' % (external_row.by_name('EXTNAME'), external_row))
+                else:
                     objects[obj_id].files.append(
                         {
                             'name': external_row.by_name('EXTNAME'),
-                            'data': data,
+                            'data': external_row.by_name('DATAHASH') if self.format_83 else external_row.get_blob('EXTDATA'),
                             'packed': external_row.by_name('DATAPACKED')
                         })
                 try:
@@ -260,8 +277,10 @@ class StoreReader(reader_1cd.Reader1CD):
                     external_row = None
                     break
             yield current_version, [v for v in objects.values()]
+            if history_row is None and external_row is None:
+                break
             current_version = min(history_row.by_name('VERNUM'), external_row.by_name('VERNUM'))
-            if (last_version and current_version > last_version) or (history_row is None and external_row is None):
+            if (last_version and current_version > last_version):
                 break
 
     def _load_classes(self):
@@ -322,7 +341,7 @@ class StoreReader(reader_1cd.Reader1CD):
         else:
             yield name + ext, data
 
-    def _save_files(self, objects, path, hierarchy=False):
+    def _save_files(self, objects, path, hierarchy=True):
         files = []
         for obj in objects:
             meta_class = obj.meta_class
@@ -336,8 +355,12 @@ class StoreReader(reader_1cd.Reader1CD):
                 parent = parent.parent
                 if parent is None:
                     break
-            logger.debug('Export %s' % full_name)
             obj_path = os.path.join(path, full_name)
+            if obj.removed:
+                logger.debug('Remove %s' % full_name)
+                rmdir_r(obj_path)
+                continue
+            logger.debug('Export %s' % full_name)
             if hierarchy and not os.path.exists(obj_path):
                 os.makedirs(obj_path)
             for file_info in obj.files:
@@ -387,7 +410,7 @@ class StoreReader(reader_1cd.Reader1CD):
                 'date': row.by_name('VERDATE')
             } for row in gen}
 
-    def export_version(self, version_number, path, hierarchy=False):
+    def export_version(self, version_number, path, hierarchy=True):
         """
         Выгрузка версии хранилища, при множественной выгрузке лучше использовать соответствующую функцию
         :param int version_number: Номер выгружаемой версии
@@ -401,7 +424,7 @@ class StoreReader(reader_1cd.Reader1CD):
         objects = self._get_objects_by_version(version_number)
         return self._save_files(objects, path, hierarchy)
 
-    def export_versions(self, path, start_version, last_version=None, hierarchy=False):
+    def export_versions(self, path, start_version, last_version=None, hierarchy=True):
         """
         Оптимизированная выгрузка нескольких версий
         :param str path: Каталог сохранения файлов

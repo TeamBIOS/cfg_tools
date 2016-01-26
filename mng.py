@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from ensurepip import version
+
 from cfg_tools import store_reader as store_reader
 from git_mng import GitMng
 import logging
@@ -72,7 +74,13 @@ class Mng:
                     self.local_repo = section['local_repo']
                 if 'remote_repo' in section:
                     self.remote_repo_url = section['remote_repo']
-        logger.info('Загружены настройки')
+        logger.info('''
+
+
+===========================================================================================''')
+        logger.info('\t\tНАЧАЛО')
+        logger.info('===================================================')
+        logger.info('\t\tЗагружены настройки')
 
     def __init_reader(self):
         """
@@ -194,8 +202,12 @@ class Mng:
         :return:
         """
         self.__before_export()
+        if version not in self.reader.versions:
+            logging.error('Версия %s не найдена' % version)
+            return False
         version_info = self.reader.versions[version]
-        logger.info('================================== Export version: %s' % version)
+        logger.info('===================================================')
+        logger.info('\t\tExport version: %s' % version)
         logger.debug(str(version_info))
         self.reader.export_version(version, self.local_repo, True)
         self.__save_exported_version_info(version)
@@ -233,9 +245,9 @@ class Mng:
         :param commit: Помещать в репозиторий
         :return:
         """
-        logger.info('============================================')
-        logger.info('==== Выгрузка новых версий в GIT')
-        logger.info('============================================\n')
+        logger.info('===================================================')
+        logger.info('\t\tВыгрузка новых версий в GIT')
+        logger.info('===================================================')
         if self.export_to_remote_repo:
             self.repo.pull()
         start_version = 0
@@ -247,9 +259,18 @@ class Mng:
                     logger.critical('Не удалось определить версию предидущей выгрузки')
                     return False
         logger.info('Последная выгруженная версия: %s' % start_version)
-        start_version += 1
         self.__before_export()
-        logger.info('Последная версия в хранилище: %s' % max(self.reader.versions))
+        maxStoreVersion = max(self.reader.versions)
+        logger.info('Последная версия в хранилище: %s' % maxStoreVersion)
+        if maxStoreVersion == start_version:
+            logger.info('===================================================')
+            logger.info('\t\tНет новых версий'.upper())
+            logger.info('===================================================')
+            return True
+        elif maxStoreVersion < start_version:
+            logger.critical('Версия хранилища меньше версии GIT, чтото пошло не так')
+            return False
+        start_version += 1
         self.export_versions(start_version, commit=commit)
         return True
 
