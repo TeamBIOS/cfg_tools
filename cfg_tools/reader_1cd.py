@@ -63,9 +63,7 @@ types_fun = {
     'RV': lambda f, x: utils.read_struct(x, '4I'),
     'NT': lambda f, x: utils.read_struct(x, '2I'),
     'I': lambda f, x: utils.read_struct(x, '2I'),
-    # 'DT': lambda f, x: utils.b2s(x) if x[4:6] == b'\x00\x00' else datetime.strptime(utils.b2s(x), '%Y%m%d%H%M%S')
-    # TODO Сделать корректную проверку валидности даты
-    'DT': lambda f, x: datetime.strptime(utils.b2s(x), '%Y%m%d%H%M%S')
+    'DT': lambda f, x: utils.b2s(x) if x[4:6] == b'\x00\x00' else datetime.strptime(utils.b2s(x), '%Y%m%d%H%M%S')
 }
 
 
