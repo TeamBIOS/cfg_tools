@@ -1,7 +1,7 @@
 import binascii
 import zlib
 from struct import unpack, calcsize
-
+from datetime import datetime
 
 BYTES16_AS_GUID = True
 
@@ -39,6 +39,14 @@ def bytes_to_int(type_info, data):
         return int(''.join(['-' if hex_str[0] == '0' else '+',
                             hex_str[1:type_info.length + 1]]))
 
+
+def bytes_to_datetime(type_info, data):
+    byte_str = b2s(data)
+    if data[:2] == b'\x00\x00':
+        # TODO Убрать исключение после теста
+        raise Exception("Ошибка преобразования даты. Значение: " + byte_str)
+    else:
+        return datetime.strptime(byte_str, '%Y%m%d%H%M%S')
 
 def print_table_content(gen, with_headers=True):
     if with_headers:
