@@ -48,6 +48,7 @@ class Mng:
             self.store_path = store_path
             self.remote_repo_url = remote_url
         self.export_to_remote_repo = True if self.remote_repo_url else False
+        self.use_pull = self.export_to_remote_repo and self.use_pull
         self.reader = None
         self.repo = GitMng(self.local_repo, self.remote_repo_url)
 
@@ -74,6 +75,9 @@ class Mng:
                     self.local_repo = section['local_repo']
                 if 'remote_repo' in section:
                     self.remote_repo_url = section['remote_repo']
+                if 'use_pull' in section:
+                    self.use_pull = section.getboolean('use_pull')
+
         logger.info('''
 
 
@@ -142,8 +146,6 @@ class Mng:
             logger.info('Репозиторий уже существует, инициализация не выполнена')
             return
         self.repo.init()
-        if self.export_to_remote_repo:
-            self.repo.pull()
         with open(os.path.join(self.local_repo, '.gitignore'), 'w+') as f:
             f.write('# Service files')
             f.write('authors.csv')
@@ -248,7 +250,7 @@ class Mng:
         logger.info('===================================================')
         logger.info('\t\tВыгрузка новых версий в GIT')
         logger.info('===================================================')
-        if self.export_to_remote_repo:
+        if self.use_pull:
             self.repo.pull()
         start_version = 0
         if os.path.exists(self.__last_version_file()):
