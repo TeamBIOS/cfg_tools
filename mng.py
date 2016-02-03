@@ -41,6 +41,7 @@ class Mng:
         self.local_repo = None
         self.store_path = None
         self.remote_repo_url = None
+        self.use_pull = True
         if config_file:
             self.__load_config(config_file)
         else:

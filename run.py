@@ -1,9 +1,9 @@
-import subprocess
 import logging
 import time
 from mng import Mng
 import sys
 import os
+import traceback
 
 
 def init(args):
@@ -90,12 +90,15 @@ if command['need_config']:
     try:
         success = command['func'](argv)
     except:
-        print('Выполение команды %s' % command_name)
+        print('Error: выполения команды %s' % command_name)
+        traceback.print_exc()
+
 else:
     try:
         success = command['func']()
     except:
-        print('Выполение команды %s' % command_name)
+        print('Error: выполения команды %s' % command_name)
+        traceback.print_exc()
 
 logging.info('export delay: %s sec.' % (time.time() - t1))
 sys.exit(0 if success else 1)
